@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>班級榮譽系統 v59.1 (雙榜單版)</title>
+    
+    <!-- Firebase SDK (相容模式，最穩定) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            --primary: #2c3e50; --accent: #e67e22; --success: #27ae60; --bg: #f4f7f6;
+            --card-bg: #ffffff; --danger: #e74c3c; --info: #3498db; --purple: #9b59b6;
+            --rank-white: #bdc3c7; --rank-red: #e74c3c; --rank-blue: #3498db; --rank-gold: #f1c40f;
+        }
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', '微軟正黑體', sans-serif; background-color: var(--bg); margin: 0; padding: 15px; color: var(--primary); user-select: none; padding-bottom: 100px; overflow-x: hidden; }
+        input, textarea, select { user-select: auto; }
+        
+        /* Particles */
+        .particle { position: fixed; pointer-events: none; animation: floatUp 1s ease-out forwards; z-index: 9999; font-weight: bold; color: var(--accent); font-size: 20px; text-shadow: 1px 1px 0 #fff; }
+        @keyframes floatUp { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-50px) scale(1.5); opacity: 0; } }
+
+        /* Login */
+        #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #2c3e50; z-index: 10000; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; }
+        .login-box { background: white; padding: 40px; border-radius: 20px; text-align: center; color: #333; width: 350px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); position: relative; }
+        .login-btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 30px; }
+        .role-btn { padding: 15px; border: 2px solid #eee; border-radius: 10px; cursor: pointer; transition: 0.2s; background: white; font-weight: bold; font-size: 16px; }
+        .role-btn:hover { border-color: var(--info); background: #f0f8ff; transform: translateY(-3px); }
+        #pinArea { margin-top: 20px; display: none; }
+        #pinInput { padding: 10px; font-size: 24px; width: 80%; text-align: center; border: 2px solid #ddd; border-radius: 8px; letter-spacing: 5px; }
+        #loginTitle { font-size: 18px; font-weight: bold; color: var(--primary); margin-bottom: 10px; display: block; }
+
+        /* Cloud UI */
+        .cloud-status-bar { margin-bottom: 20px; padding: 10px; background: #f8f9fa; border-radius: 10px; font-size: 13px; color: #666; display: flex; flex-direction: column; gap: 5px; align-items: center; }
+        .btn-google { background: white; border: 1px solid #ddd; color: #444; padding: 8px 15px; border-radius: 50px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: 0.2s; font-size: 14px; width: 100%; justify-content: center; }
+        .btn-google:hover { background: #f1f1f1; transform: translateY(-1px); }
+        .user-chip { background: #e8f5e9; color: #2e7d32; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 5px; }
+
+        /* Header */
+        .header { background: white; padding: 15px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 4px solid #e1e8ed; gap: 15px; position: relative; }
+        .cloud-indicator { position: absolute; top: -10px; right: 10px; background: #2ecc71; color: white; font-size: 10px; padding: 2px 8px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: none; }
+        
+        .mystery-panel { display: flex; gap: 10px; align-items: center; }
+        .mystery-box { background: #f8f9fa; border: 2px dashed #bdc3c7; border-radius: 10px; padding: 5px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100px; height: 85px; position: relative; transition: 0.2s; }
+        .mystery-box:hover { transform: translateY(-2px); border-color: var(--accent); }
+        .mystery-label { font-size: 11px; color: #999; font-weight: bold; margin-bottom: 2px; }
+        .mystery-name { font-weight: 800; font-size: 16px; color: var(--primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; cursor: pointer; }
+        .mystery-controls { display: none; gap: 4px; margin-top: 4px; } 
+        .icon-btn { cursor: pointer; border: none; background: #eee; border-radius: 4px; padding: 2px 6px; font-size: 12px; transition: 0.2s; }
+        .win-btn { position: absolute; bottom: -12px; z-index: 10; background: var(--accent); color: white; border: none; border-radius: 10px; padding: 2px 8px; font-size: 10px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+
+        .center-controls { flex: 1; display: flex; justify-content: center; min-width: 200px; }
+        .mascot-container { display: flex; align-items: center; gap: 15px; background: linear-gradient(135deg, #fff3e0, #ffe0b2); padding: 8px 25px; border-radius: 50px; border: 4px solid white; box-shadow: 0 5px 15px rgba(230,126,34,0.2); cursor: pointer; transition: 0.2s; position: relative; }
+        .mascot-container:active { transform: scale(0.95); }
+        .mascot-icon { font-size: 40px; animation: float 3s ease-in-out infinite; }
+        .mascot-info { display: flex; flex-direction: column; }
+        .score-val { font-size: 28px; font-weight: 900; color: #d35400; line-height: 1; }
+        .score-label { font-size: 11px; font-weight: bold; color: #e67e22; text-transform: uppercase; letter-spacing: 1px; }
+
+        .toolbar { display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 6px; width: 100%; max-width: 600px; }
+        .tool-btn { border: none; padding: 8px 4px; border-radius: 6px; cursor: pointer; font-weight: 600; color: white; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 3px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.2s; white-space: nowrap; }
+        .tool-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .btn-blue { background: var(--info); } .btn-green { background: var(--success); } .btn-orange { background: var(--accent); } 
+        .btn-red { background: var(--danger); } .btn-gray { background: #7f8c8d; } .btn-dark { background: var(--primary); } .btn-purple { background: var(--purple); }
+
+        /* Grid */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+        .card { background: white; border-radius: 10px; padding: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); position: relative; transition: 0.1s; border-top: 5px solid var(--rank-white); display: flex; flex-direction: column; gap: 4px; }
+        .card.rank-white { border-top-color: var(--rank-white); }
+        .card.rank-red { border-top-color: var(--rank-red); background: #fff5f5; }
+        .card.rank-blue { border-top-color: var(--rank-blue); background: #f0f8ff; }
+        .card.rank-gold { border-top-color: var(--rank-gold); background: #fffbe6; border: 2px solid var(--rank-gold); }
+        
+        .card:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
+        .card.selected { border: 4px solid #e67e22 !important; transform: scale(0.95) !important; box-shadow: 0 0 15px rgba(230, 126, 34, 0.6) !important; z-index: 10; }
+        .card.absent { opacity: 0.6 !important; background: #f2f2f2 !important; filter: grayscale(1); pointer-events: none; border-color: #999 !important; }
+        .card.absent .card-name { color: #999; text-decoration: line-through; }
+        
+        .card-header { display: flex; justify-content: space-between; align-items: center; }
+        .card-name { font-size: 16px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
+        .card-lv { font-size: 10px; background: #34495e; color: white; padding: 1px 5px; border-radius: 4px; }
+        .xp-bar { height: 16px; background: #eee; border-radius: 8px; overflow: hidden; margin-top: 4px; position: relative; box-shadow: inset 0 1px 2px rgba(0,0,0,0.1); }
+        .xp-fill { height: 100%; background: #3498db; width: 0%; transition: width 0.5s; }
+        .xp-text { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; color: #333; text-shadow: 0 0 2px white; }
+        .coin-display { text-align: center; font-size: 24px; font-weight: 800; color: #f1c40f; text-shadow: 1px 1px 0 #d35400; margin: 4px 0; }
+        
+        .title-row { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 2px; min-height: 22px; flex-wrap: wrap;}
+        .card-title { font-size: 11px; color: #e67e22; font-weight: bold; }
+        .badge-container { display: flex; gap: 2px; }
+        .badge-icon { font-size: 14px; line-height: 1; cursor: help; }
+        
+        @keyframes rainbow { 0% { filter: drop-shadow(0 0 2px red); } 20% { filter: drop-shadow(0 0 2px orange); } 40% { filter: drop-shadow(0 0 2px yellow); } 60% { filter: drop-shadow(0 0 2px green); } 80% { filter: drop-shadow(0 0 2px blue); } 100% { filter: drop-shadow(0 0 2px violet); } }
+        .five-elements-ready { animation: rainbow 1s infinite; cursor: pointer; transform: scale(1.1); }
+
+        .card-actions-wrapper { display: none; }
+        body.role-teacher .card-actions-wrapper { display: block; }
+        .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: auto; }
+        .btn-act { border: none; border-radius: 4px; padding: 6px; font-size: 12px; font-weight: bold; cursor: pointer; color: #333; }
+        .btn-plus { background: #d4efdf; color: #27ae60; } 
+        /* 魔法召喚按鈕 */
+        .btn-gacha { background: #e8daef; color: #8e44ad; }
+        .btn-bag { background: #f2f2f2; color: #555; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 6px; border-radius: 4px; border:none; cursor: pointer; margin-top:5px; font-size: 12px; width: 100%; }
+        .btn-bag.has-item { background: #fadbd8; color: #c0392b; font-weight: bold; }
+        .helper-prompt { display: none; text-align: center; color: #aaa; font-size: 12px; margin-top: 10px; }
+        body.role-helper .helper-prompt { display: block; }
+
+        /* Batch Bar */
+        #batchBar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #2c3e50; color: white; padding: 10px 25px; border-radius: 50px; display: none; align-items: center; gap: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); z-index: 1000; white-space: nowrap; }
+        #familyMenu { position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); background: white; padding: 10px; border-radius: 10px; display: none; grid-template-columns: 1fr 1fr 1fr; gap: 5px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        #familyMenu button { padding: 8px; font-size: 12px; }
+
+        /* Modals */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
+        .modal-content { background: white; width: 90%; max-width: 600px; border-radius: 16px; padding: 25px; max-height: 85vh; overflow-y: auto; position: relative; box-shadow: 0 15px 40px rgba(0,0,0,0.3); animation: popIn 0.2s; }
+        .modal.high-z { z-index: 3000 !important; } 
+        @keyframes popIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .close-icon { position: absolute; right: 20px; top: 20px; font-size: 24px; cursor: pointer; color: #ccc; transition: 0.2s; z-index: 10; }
+        .close-icon:hover { color: var(--danger); }
+
+        .task-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
+        .task-btn { border: 2px solid #eee; background: white; padding: 12px; border-radius: 12px; text-align: left; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
+        .task-btn:hover { border-color: var(--accent); background: #fff8e1; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .task-icon { font-size: 28px; }
+        .task-info { display: flex; flex-direction: column; }
+        .task-title { font-weight: bold; font-size: 15px; color: var(--primary); }
+        .task-desc { font-size: 11px; color: #999; margin-top: 1px; }
+        .task-pts { color: var(--accent); font-weight: bold; font-size: 13px; margin-top: 1px; }
+
+        .level-tabs { display: flex; gap: 5px; margin-bottom: 10px; border-bottom: 2px solid #eee; }
+        .level-tab { flex: 1; padding: 8px; text-align: center; cursor: pointer; font-weight: bold; color: #999; background: #f9f9f9; border-radius: 8px 8px 0 0; }
+        .level-tab.active { background: var(--accent); color: white; }
+        .tabs { display: flex; border-bottom: 2px solid #f0f0f0; margin-bottom: 15px; }
+        .tab { flex: 1; padding: 10px; text-align: center; cursor: pointer; font-weight: bold; color: #999; border-bottom: 3px solid transparent; }
+        .tab.active { color: var(--primary); border-bottom-color: var(--info); color: var(--primary); }
+        .tab-content { display: none; } .tab-content.active { display: block; }
+        .list-item { padding: 10px; border-bottom: 1px solid #f9f9f9; display: flex; justify-content: space-between; align-items: center;}
+        .item-info { display: flex; flex-direction: column; }
+        .item-title { font-weight: bold; font-size: 14px; }
+        .item-sub { font-size: 11px; color: #999; }
+        .hist-row { font-size: 12px; color: #666; padding: 5px 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
+        
+        textarea { width: 100%; height: 100px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-family: monospace; }
+        input[type="file"] { display: none; }
+        input[type="text"], input[type="number"], input[type="password"], select { padding: 6px; border: 1px solid #ddd; border-radius: 5px; }
+        .lv-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .lv-table th, .lv-table td { border: 1px solid #eee; padding: 8px; text-align: left; }
+        .lv-table th { background: #f8f9fa; }
+        .rank-bar-container { margin-bottom: 10px; }
+        .rank-bar-label { display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; margin-bottom: 2px; }
+        .rank-bar-track { background: #f0f0f0; border-radius: 10px; height: 12px; overflow: hidden; }
+        .rank-bar-fill { background: var(--info); height: 100%; border-radius: 10px; transition: width 0.5s; }
+
+        /* VISIBILITY */
+        .admin-only { display: none !important; }
+        body.role-teacher .admin-only { display: inline-flex !important; }
+        body.role-teacher div.admin-only { display: block !important; }
+        body.role-teacher .mystery-controls { display: flex !important; }
+        .helper-hidden { display: flex !important; }
+        body.role-helper .helper-hidden { display: none !important; }
+
+        /* GACHA SYSTEM UI (RPG STYLE) */
+        #gachaOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(30, 20, 10, 0.95); z-index: 5000; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
+        .rpg-altar { background-color: #8c5a2c; background-image: repeating-linear-gradient(0deg, transparent, transparent 20px, rgba(0,0,0,0.05) 20px, rgba(0,0,0,0.05) 40px); border: 6px solid #5a3514; box-shadow: 0 15px 40px rgba(0,0,0,0.8), inset 0 0 40px rgba(0,0,0,0.5); padding: 30px; border-radius: 20px; text-align: center; color: #fffdf5; max-width: 90%; width: 500px; position: relative; }
+        .magic-circle { width: 200px; height: 200px; border: 4px dashed #f1c40f; border-radius: 50%; margin: 20px auto; position: relative; display: flex; align-items: center; justify-content: center; animation: spin-slow 10s linear infinite; box-shadow: 0 0 20px rgba(241,196,15,0.2); }
+        .magic-circle::before { content: '✡'; font-size: 80px; position: absolute; color: rgba(241,196,15,0.5); animation: spin-reverse 15s linear infinite; }
+        .gacha-buttons { display: flex; gap: 20px; justify-content: center; margin-top: 30px; }
+        .btn-rpg { background: linear-gradient(180deg, #f39c12 0%, #d35400 100%); border: 4px solid #5a3514; color: white; padding: 15px 30px; font-size: 18px; font-weight: bold; border-radius: 12px; cursor: pointer; box-shadow: 0 6px 0 #873600; transition: 0.1s; text-shadow: 1px 1px 2px black; }
+        .btn-rpg:active { transform: translateY(6px); box-shadow: 0 0px 0 #873600; }
+        .btn-rpg.epic { background: linear-gradient(180deg, #9b59b6 0%, #8e44ad 100%); box-shadow: 0 6px 0 #5b2c6f; border-color: #4a235a; }
+        .btn-rpg.epic:active { box-shadow: 0 0px 0 #5b2c6f; }
+        
+        @keyframes spin-slow { 100% { transform: rotate(360deg); } }
+        @keyframes spin-reverse { 100% { transform: rotate(-360deg); } }
+        @keyframes shake-hard { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-10px) rotate(-5deg); } 40% { transform: translateX(10px) rotate(5deg); } 60% { transform: translateX(-10px) rotate(-5deg); } 80% { transform: translateX(10px) rotate(5deg); } }
+
+        /* FANCY CARD UI - NEW RESPONSIVE SYSTEM */
+        .card-result-container { margin-top: 10px; width: 100%; }
+        
+        .fancy-card { 
+            aspect-ratio: 54 / 90; 
+            border-radius: 12px; position: relative; display: flex; flex-direction: column; align-items: center; 
+            padding: 8px; background: white; border: 4px solid #ccc; box-shadow: 0 5px 15px rgba(0,0,0,0.3); 
+            animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) backwards; 
+            background-size: cover; background-position: center; overflow: hidden; flex-shrink: 0; 
+        }
+        
+        .fancy-card .card-id { position: absolute; top: -10px; left: -10px; background: #333; color: white; font-size: 10px; padding: 2px 6px; border-radius: 10px; border: 2px solid #fff; font-weight: bold; z-index: 10; }
+        .fancy-card .card-rarity { position: absolute; top: -10px; right: -10px; font-size: 10px; padding: 2px 8px; border-radius: 10px; border: 2px solid #fff; font-weight: bold; color: white; z-index: 10; }
+        .fancy-card .card-icon { font-size: 40px; flex-grow: 1; display: flex; align-items: center; justify-content: center; z-index: 5; text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .fancy-card .card-title { font-weight: 900; font-size: 13px; margin-bottom: 4px; text-align: center; z-index: 5; line-height: 1.1; }
+        .fancy-card .card-desc { font-size: 10px; text-align: center; background: rgba(255,255,255,0.9); padding: 4px; border-radius: 6px; width: 100%; border: 1px dashed #aaa; z-index: 5; font-weight: bold; }
+        
+        .rarity-普通 { border-color: #bdc3c7; background-color: #f8f9fa; } .rarity-普通 .card-rarity { background: #7f8c8d; }
+        .rarity-稀有 { border-color: #3498db; background-color: #ebf5fb; } .rarity-稀有 .card-rarity { background: #2980b9; }
+        .rarity-史詩 { border-color: #9b59b6; background-color: #f4ecf7; } .rarity-史詩 .card-rarity { background: #8e44ad; }
+        .rarity-傳說 { border-color: #f1c40f; background-color: #fef9e7; } .rarity-傳說 .card-rarity { background: #d35400; }
+        
+        .fancy-card.has-img { border: none; padding: 0; background: transparent; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+        .fancy-card.has-img .card-ui-img { 
+            width: 100%; height: 100%; object-fit: cover; border-radius: 12px; 
+            image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; transform: translateZ(0);
+        }
+        .fancy-card.has-img .card-id, .fancy-card.has-img .card-rarity, .fancy-card.has-img .card-icon, .fancy-card.has-img .card-title, .fancy-card.has-img .card-desc { display: none; }
+
+        @keyframes epic-glow { 0% { box-shadow: 0 0 10px #9b59b6; } 100% { box-shadow: 0 0 30px #9b59b6, 0 0 60px #8e44ad; } }
+        @keyframes legendary-glow { 0% { box-shadow: 0 0 15px #f1c40f; } 100% { box-shadow: 0 0 40px #f1c40f, 0 0 80px #fff; } }
+
+        .fancy-card.has-img.rarity-史詩 { animation: epic-glow 1.5s infinite alternate; border: 2px solid #9b59b6; }
+        .fancy-card.has-img.rarity-傳說 { animation: legendary-glow 1.5s infinite alternate; border: 2px solid #f1c40f; }
+
+        /* 單抽與十連抽 */
+        .single-draw { display: flex; justify-content: center; align-items: center; width: 100%; height: 60vh; }
+        .single-draw .fancy-card { height: 100%; width: auto; max-width: 85vw; }
+        .single-draw .fancy-card.has-img .card-ui-img { border-radius: 20px; } 
+
+        .multi-draw {
+            display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(2, 1fr);
+            gap: 2vh 1vw; width: 95vw; max-width: 1200px; height: 60vh; margin: 0 auto;
+            justify-items: center; align-items: center;
+        }
+        .multi-draw .fancy-card { height: 100%; max-height: 28vh; width: auto; aspect-ratio: 54 / 90; }
+
+        .card-edit-row { display: grid; grid-template-columns: 60px 100px 1fr 1fr 1fr 40px; gap: 5px; margin-bottom: 5px; align-items: center; background: #f9f9f9; padding: 5px; border-radius: 5px; }
+        #cardEditModal .modal-content { max-width: 900px; width: 95%; }
+
+        #loading-overlay { display: none; position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); z-index:5; justify-content:center; align-items:center; color:#333; font-weight:bold; border-radius: 20px; }
+    </style>
+</head>
+<body>
+
+    <div id="loginOverlay">
+        <div class="login-box">
+            <div id="loading-overlay">資料同步中...</div>
+            <div style="font-size: 50px; margin-bottom: 10px;">🛡️</div>
+            <h2 style="margin:0;">班級系統 v59.1</h2>
+            <p style="color:#aaa; font-weight:bold; color:#e67e22;">雙榜單版</p>
+            
+            <div class="cloud-status-bar">
+                <div id="userInfoDisplay" style="display:none; width:100%;">
+                    <div class="user-chip"><span style="font-size:16px;">👤</span> <span id="userName"></span></div>
+                    <button class="tool-btn btn-gray" style="margin-top:5px; width:100%; font-size:12px;" onclick="doLogout()">登出</button>
+                </div>
+                <button id="btnLoginGoogle" class="btn-google" onclick="doLogin()">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                    Google 登入同步 (救援至雲端)
+                </button>
+            </div>
+
+            <div class="login-btn-group" id="roleSelect">
+                <div class="role-btn" onclick="selectRole('teacher')">👨‍🏫 我是老師</div>
+                <div class="role-btn" onclick="selectRole('helper')">👦 我是小幫手</div>
+            </div>
+            <div id="pinArea">
+                <span id="loginTitle"></span>
+                <input type="password" id="pinInput" placeholder="請輸入密碼" maxlength="6" onkeydown="if(event.key==='Enter')checkLogin()">
+                <div style="margin-top:15px; display:flex; gap:10px;">
+                    <button class="tool-btn btn-gray" style="flex:1; justify-content:center;" onclick="backToRole()">返回</button>
+                    <button class="tool-btn btn-blue" style="flex:1; justify-content:center;" onclick="checkLogin()">登入</button>
+                </div>
+                <p id="loginMsg" style="color:red; font-size:12px; margin-top:10px;"></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="header">
+        <div id="cloudIndicator" class="cloud-indicator">☁️ 雲端同步中</div>
+        <div class="mystery-panel helper-hidden">
+            <div class="mystery-box">
+                <div class="mystery-label">🤫 秘密客</div><div id="dispSecret" class="mystery-name">???</div>
+                <div class="mystery-controls admin-only">
+                    <button class="icon-btn" onclick="toggleReveal('secret')">👁</button><button class="icon-btn" onclick="drawNew('secret')">🎲</button>
+                </div>
+                <button class="win-btn admin-only" onclick="applyWin('secret')">獲勝 +2</button>
+            </div>
+            <div class="mystery-box">
+                <div class="mystery-label">🛡️ 守護者</div><div id="dispBoss" class="mystery-name">???</div>
+                <div class="mystery-controls admin-only">
+                    <button class="icon-btn" onclick="toggleReveal('boss')">👁</button><button class="icon-btn" onclick="drawNew('boss')">🎲</button>
+                </div>
+                <button class="win-btn admin-only" onclick="applyWin('boss')">獲勝 +10</button>
+            </div>
+        </div>
+
+        <div class="center-controls helper-hidden">
+            <div class="mascot-container" onclick="openClassReward()">
+                <div class="mascot-icon" id="mascotIcon">🐛</div>
+                <div class="mascot-info">
+                    <div class="score-label">CLASS BANK</div>
+                    <div class="score-val" id="classScoreText">0</div>
+                </div>
+            </div>
+            <div style="font-size:11px; color:#aaa; margin-top:5px; text-align:center;">(點擊查看兌換)</div>
+        </div>
+
+        <div class="toolbar">
+            <button class="tool-btn btn-orange" onclick="openFamilyRank()">🏆 榮譽榜</button>
+            <button class="tool-btn btn-blue admin-only" onclick="openModal('attendModal')">📅 點名</button>
+            <button class="tool-btn btn-orange admin-only" onclick="openModal('divModal')">💰 分紅</button>
+            <button class="tool-btn btn-dark admin-only" onclick="toggleBatch()">✅ 批次</button>
+            <button class="tool-btn btn-purple admin-only" onclick="spinWheel()">🎡 轉盤</button>
+            <button class="tool-btn btn-gray admin-only" onclick="openModal('managerModal')">⚙️ 設定</button>
+            <button class="tool-btn btn-gray admin-only" id="btnSound" onclick="toggleSound()">🔊</button>
+            <button class="tool-btn btn-red" onclick="lockSystem()">🔒 鎖定</button>
+            <input type="file" id="fileInput" onchange="importData(this)">
+        </div>
+    </div>
+
+    <div class="grid" id="studentGrid"></div>
+
+    <div id="batchBar">
+        <span id="batchCount" style="font-weight:bold;">已選 0 人</span>
+        <button class="tool-btn btn-orange" onclick="selectAll()">全選</button>
+        <div style="position: relative;">
+            <button class="tool-btn btn-purple" onclick="toggleFamilyMenu()">🏠 家族</button>
+            <div id="familyMenu"></div>
+        </div>
+        <div style="width:1px; height:20px; background:#ffffff55;"></div>
+        <button class="tool-btn btn-blue" onclick="openBatchTask()">📜 派發任務</button>
+        <button class="tool-btn btn-green" onclick="openBatchDeposit()">📥 存入貼紙</button>
+        <div style="width:1px; height:20px; background:#ffffff55;" class="admin-only"></div>
+        <button class="tool-btn btn-red admin-only" onclick="toggleBatch()">取消</button>
+    </div>
+
+    <!-- Modals -->
+    <div id="taskModal" class="modal"><div class="modal-content"><span class="close-icon" onclick="closeModal('taskModal')">&times;</span><h3 id="taskModalTitle">📜 派發任務</h3><p id="taskTarget" style="font-size:13px; color:#e67e22; font-weight:bold; margin-bottom:10px;"></p><div class="task-grid" id="taskList"></div></div></div>
+    
+    <div id="detailModal" class="modal"><div class="modal-content"><span class="close-icon" onclick="closeModal('detailModal')">&times;</span>
+        <div style="text-align:center;"><h2 id="detName" style="margin:0;"></h2><div id="detTitle" style="color:#e67e22; font-weight:bold; font-size:14px; margin-bottom:5px;"></div><div style="font-size:12px; color:#888;">Lv.<span id="detLv"></span> | EXP: <span id="detExp"></span></div></div>
+        <div class="tabs" style="margin-top:15px;">
+            <div class="tab active" onclick="swTab('bag')">🎒 背包 <span id="bagBadge" style="font-size:10px; background:red; color:white; padding:1px 5px; border-radius:10px;">0</span></div>
+            <div class="tab" onclick="swTab('hist')">📝 紀錄</div>
+            <div class="tab admin-only" onclick="swTab('edit')">🔧 修正</div>
+        </div>
+        <div id="t-bag" class="tab-content active">
+            <div id="bagList" style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center; max-height:400px; overflow-y:auto; padding:10px 0;"></div>
+            <button id="btnFiveElements" class="tool-btn btn-purple" style="width:100%; margin-top:10px; display:none; justify-content:center;" onclick="checkFiveElements()">✨ 集齊五行兌換大獎</button>
+        </div>
+        <div id="t-hist" class="tab-content"><div id="histList" style="height:300px; overflow-y:auto;"></div></div>
+        <div id="t-edit" class="tab-content" style="text-align:center;">
+            <p>⚠️ 手動調整 (金幣與經驗同步)</p>
+            <div style="display:flex; justify-content:center; gap:10px; margin-bottom:20px;">
+                <button class="tool-btn btn-red" onclick="manualAdj(-10)">-10</button>
+                <button class="tool-btn btn-red" onclick="manualAdj(-1)">-1</button>
+                <button class="tool-btn btn-green" onclick="manualAdj(1)">+1</button>
+                <button class="tool-btn btn-green" onclick="manualAdj(10)">+10</button>
+            </div>
+            <p>👑 上帝模式：給予徽章</p>
+            <div style="display:flex; justify-content:center; gap:5px; margin-bottom:20px;"><button class="tool-btn btn-gray" onclick="adminGiveBadge('🟡')">🟡</button><button class="tool-btn btn-gray" onclick="adminGiveBadge('🌲')">🌲</button><button class="tool-btn btn-gray" onclick="adminGiveBadge('💧')">💧</button><button class="tool-btn btn-gray" onclick="adminGiveBadge('🔥')">🔥</button><button class="tool-btn btn-gray" onclick="adminGiveBadge('⛰️')">⛰️</button></div>
+            <button class="tool-btn btn-gray" onclick="clearBag()">🗑 清空背包</button>
+        </div>
+    </div></div>
+
+    <!-- 排行榜 Modal -->
+    <div id="familyRankModal" class="modal">
+        <div class="modal-content">
+            <span class="close-icon" onclick="closeModal('familyRankModal')">&times;</span>
+            <h3 style="margin-bottom: 5px;">🏆 榮譽排行榜</h3>
+            <div class="tabs" style="margin-top:15px;">
+                <div class="tab rank-tab active" onclick="swRankTab('family')">🏠 家族總經驗</div>
+                <div class="tab rank-tab" onclick="swRankTab('individual')">👤 個人前10名</div>
+            </div>
+            <div id="t-familyRank" class="tab-content rank-tab-content active">
+                <div id="familyRankList" style="margin-top:15px; max-height:400px; overflow-y:auto;"></div>
+            </div>
+            <div id="t-individualRank" class="tab-content rank-tab-content">
+                <div id="individualRankList" style="margin-top:15px; max-height:400px; overflow-y:auto;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="classRewardModal" class="modal"><div class="modal-content"><span class="close-icon" onclick="closeModal('classRewardModal')">&times;</span><div style="text-align:center;"><div style="font-size:40px;">🏆</div><h3>班級存摺</h3><p>目前點數：<span id="crPoints" style="color:#e67e22; font-weight:bold;">0</span></p></div><div style="margin-top:15px; border-bottom:1px solid #eee; padding-bottom:15px;"><h4 style="margin:0 0 10px 0;">🎁 兌換獎勵 (集滿50點)</h4><div id="crList" style="max-height:150px; overflow-y:auto;"></div><div class="admin-only" style="margin-top:10px; padding-top:10px; border-top:1px dashed #eee;"><input type="text" id="newCRName" placeholder="新獎勵名稱" style="width:50%"><button class="tool-btn btn-blue" onclick="addCR()">新增</button></div></div><div style="margin-top:15px; border-bottom:1px solid #eee; padding-bottom:15px;"><h4 style="margin:0 0 10px 0;">🎒 班級背包</h4><div id="classBagList" style="min-height:50px; background:#f9f9f9; padding:5px; border-radius:5px;"></div></div><div style="margin-top:15px;"><h4 style="margin:0 0 5px 0; color:#999; font-size:13px;">📜 紀錄</h4><div id="classHistList" style="font-size:12px; color:#666; max-height:80px; overflow-y:auto;"></div></div></div></div>
+    
+    <div id="managerModal" class="modal"><div class="modal-content"><span class="close-icon" onclick="closeModal('managerModal')">&times;</span><h3>⚙️ 系統管理</h3><div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px;"><button class="tool-btn btn-purple" onclick="openCardEditor()">🛠 編輯卡池與圖片</button><button class="tool-btn btn-orange" onclick="openModal('gachaEditModal')">🎁 稀有度機率</button><button class="tool-btn btn-blue" onclick="openModal('levelTableModal')">📊 等級福利表</button><button class="tool-btn btn-dark" onclick="dlData()">💾 下載備份</button><button class="tool-btn btn-dark" onclick="document.getElementById('fileInput').click()">📂 匯入備份</button></div><div style="background:#fff8e1; padding:15px; border-radius:10px; margin-bottom:20px;"><div style="font-weight:bold; color:#d35400; margin-bottom:10px;">🔑 修改密碼</div><div style="display:flex; gap:10px;"><button class="tool-btn btn-orange" style="flex:1" onclick="changePw('teacher')">改老師密碼</button><button class="tool-btn btn-gray" style="flex:1" onclick="changePw('helper')">改幫手密碼</button></div></div><p style="font-weight:bold; margin-bottom:5px;">👥 家族分組設定</p><textarea id="groupEditor" style="height:80px;"></textarea><button class="tool-btn btn-green" onclick="saveGroups()" style="width:100%; margin-bottom:20px;">儲存分組</button><div style="background:#e8f8f5; padding:15px; border-radius:10px; margin-bottom:20px;"><button class="tool-btn btn-green" style="width:100%" onclick="dailyReset()">🌞 早安！開始新的一天 (重置抽籤)</button></div><p style="font-weight:bold; margin-bottom:5px;">📋 學生名單 (請小心修改)</p><textarea id="mgrInput"></textarea><div style="display:flex; justify-content:space-between; margin-top:10px;"><button class="tool-btn btn-red" onclick="resetAll()">⚠ 全部歸零重置</button><button class="tool-btn btn-green" onclick="saveList()">💾 儲存名單</button></div>
+    
+    <!-- 新增的強制重整按鈕 -->
+    <div style="margin-top:20px; padding-top:20px; border-top: 1px dashed #ccc; text-align: center;">
+        <p style="font-size:12px; color:#666; margin-bottom: 5px;">如果更新後畫面沒變，請點擊下方按鈕強制清除瀏覽器記憶：</p>
+        <button class="tool-btn btn-red" style="width: 100%;" onclick="hardReload()">🔄 強制重整 (清除快取)</button>
+    </div>
+
+    </div></div>
+    
+    <div id="attendModal" class="modal"><div class="modal-content"><span class="close-icon" onclick="closeModal('attendModal')">&times;</span><h3>📅 出席管理</h3><p style="color:#999;font-size:12px;">紅色代表請假/缺席，抽籤會跳過。</p><div id="attendGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(80px,1fr)); gap:8px; margin-top:15px;"></div></div></div>
+    <div id="divModal" class="modal"><div class="modal-content" style="text-align:center; z-index:3000;"><span class="close-icon" onclick="closeModal('divModal')">&times;</span><h3>💰 全班分紅</h3><div style="display:flex; justify-content:center; gap:10px; margin-top:20px;"><button class="tool-btn btn-green" onclick="doDiv(1)">+1</button><button class="tool-btn btn-green" onclick="doDiv(2)">+2</button><button class="tool-btn btn-green" onclick="doDiv(5)">+5</button></div></div></div>
+    
+    <div id="wheelModal" class="modal"><div class="modal-content" style="text-align:center;"><span class="close-icon" onclick="closeModal('wheelModal')">&times;</span><h2>🎡 幸運轉盤</h2>
+        <div id="wheelSetup">
+            <p>要抽出幾位幸運兒？</p>
+            <input type="number" id="wheelCount" value="1" min="1" max="28" style="font-size:20px; padding:5px; width:60px; text-align:center; margin:10px;">
+            <button class="tool-btn btn-purple" style="margin:10px auto; width:100px;" onclick="runWheel()">開始抽籤</button>
+        </div>
+        <div id="wheelRunning" style="display:none;">
+            <div style="font-size:80px; margin:20px;" id="wheelIcon">🎡</div>
+            <h3 id="wheelRes" style="color:#9b59b6; min-height:30px;">...</h3>
+        </div>
+        <div id="wheelActions" style="display:none; justify-content:center; gap:10px; margin-top:15px; flex-direction: column;">
+            <h3 id="finalWinners" style="color:#e67e22;"></h3>
+            <div style="display:flex; justify-content:center; gap:10px;">
+                <button class="tool-btn btn-green" onclick="confirmWheelWin()">🎁 領取獎勵 (+2)</button>
+                <button class="tool-btn btn-gray" onclick="closeModal('wheelModal')">❌ 純抽籤 (跳過)</button>
+            </div>
+        </div>
+    </div></div>
+
+    <div id="levelTableModal" class="modal high-z"><div class="modal-content"><span class="close-icon" onclick="closeModal('levelTableModal')">&times;</span><h3>📊 等級福利對照表</h3><div class="level-tabs"><div class="level-tab active" onclick="switchLvTab('new')">👶 新手(1-9)</div><div class="level-tab" onclick="switchLvTab('war')">⚔️ 勇士(10-19)</div><div class="level-tab" onclick="switchLvTab('adv')">🛡️ 冒險(20-24)</div><div class="level-tab" onclick="switchLvTab('leg')">👑 傳奇(25+)</div></div><div style="max-height:400px; overflow-y:auto; margin-top:10px;"><table class="lv-table"><thead><tr><th>等級</th><th>稱號</th><th>商店折扣</th><th>特權</th></tr></thead><tbody id="lvTableBody"></tbody></table></div></div></div>
+    
+    <!-- 卡牌編輯器 -->
+    <div id="cardEditModal" class="modal high-z"><div class="modal-content"><span class="close-icon" onclick="closeModal('cardEditModal')">&times;</span><h3>🛠 編輯魔法卡池</h3>
+        <p style="font-size:12px; color:#666; margin-bottom:10px;">您可以貼上自行設計的卡牌圖片網址 (建議尺寸至少 540x900 像素，以確保放大後清晰)。若無圖片，系統會自動使用內建精美樣式。</p>
+        <div style="background:#f0f0f0; padding:10px; margin-bottom:10px; border-radius:5px; display:flex; gap:5px; flex-wrap:wrap; align-items: center;">
+            <select id="ncCat" style="width: 80px;"><option>普通</option><option>稀有</option><option>史詩</option><option>傳說</option></select>
+            <input type="text" id="ncName" placeholder="卡牌名稱" style="width: 120px;">
+            <input type="text" id="ncDesc" placeholder="效果說明" style="flex:1;">
+            <input type="text" id="ncIcon" placeholder="圖示(Emoji)" style="width: 60px;">
+            <input type="text" id="ncImg" placeholder="圖片網址(選填)" style="flex:1;">
+            <button class="tool-btn btn-blue" onclick="addCard()">新增</button>
+        </div>
+        <div class="card-edit-row" style="font-weight:bold; background:#e0e0e0; padding:8px;">
+            <div>稀有度</div><div>名稱</div><div>說明</div><div>圖示</div><div>圖片網址</div><div>操作</div>
+        </div>
+        <div id="ceList" style="height:350px; overflow-y:auto;"></div>
+    </div></div>
+    
+    <div id="gachaEditModal" class="modal high-z"><div class="modal-content"><span class="close-icon" onclick="closeModal('gachaEditModal')">&times;</span><h3>🎁 稀有度掉落機率 (%)</h3>
+        <p style="font-size:12px; color:#666; margin-bottom:10px;">請確保總和為 100。格式: 稀有度,機率</p>
+        <textarea id="geInput"></textarea>
+        <button class="tool-btn btn-green" style="margin-top:10px; width:100%;" onclick="saveGe()">儲存</button>
+    </div></div>
+
+    <!-- ✨ 魔法召喚祭壇 (全螢幕特效) ✨ -->
+    <div id="gachaOverlay">
+        <span class="close-icon" style="color:white; top:30px; right:30px;" onclick="closeGacha()">&times;</span>
+        <div class="rpg-altar" id="altarMain">
+            <h2 style="margin:0; font-size:32px; text-shadow:2px 2px 0 #3a210a;">🌟 魔法召喚祭壇 🌟</h2>
+            <p style="color:#f1c40f; margin:10px 0;">召喚者：<span id="gachaUser" style="font-size:24px; font-weight:bold;"></span></p>
+            <p>目前金幣：<span id="gachaCoins" style="font-size:20px; font-weight:bold;"></span> 🪙</p>
+            
+            <div class="magic-circle"></div>
+            
+            <div class="gacha-buttons">
+                <button class="btn-rpg" onclick="doGacha(1)">🔮 單次召喚<br><span style="font-size:12px; font-weight:normal;">(消耗 20 金幣)</span></button>
+                <button class="btn-rpg epic" onclick="doGacha(10)">✨ 十連召喚<br><span style="font-size:12px; font-weight:normal;">(消耗 200 金幣 / 保底史詩!)</span></button>
+            </div>
+        </div>
+        
+        <div id="gachaResult" style="display:none; text-align:center; width:100%;">
+            <h1 style="color:white; font-size:40px; text-shadow:0 0 20px #f1c40f; animation:popIn 0.5s;">🎉 召喚成功 🎉</h1>
+            <div id="gachaCardContainer" class="card-result-container"></div>
+            <button class="btn-rpg" style="margin-top:30px; padding:15px 50px;" onclick="closeGacha()">收入背包</button>
+        </div>
+    </div>
+
+    <script>
+        // --- FIREBASE CONFIG ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyC8ri0BEKk9hSzSZjq760eWHyNwo9Z2vqE",
+            authDomain: "myhomeworktracker-bbcc3.firebaseapp.com",
+            projectId: "myhomeworktracker-bbcc3",
+            storageBucket: "myhomeworktracker-bbcc3.firebasestorage.app",
+            messagingSenderId: "468701070411",
+            appId: "1:468701070411:web:95d9b588c37ed217aef9ce"
+        };
+
+        let db = null;
+        let auth = null;
+        let user = null;
+        let isCloud = false;
+        let unsubscribeSync = null;
+
+        try {
+            firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.firestore();
+            
+            auth.onAuthStateChanged((u) => {
+                if (u) {
+                    user = u;
+                    isCloud = true;
+                    document.getElementById('btnLoginGoogle').style.display = 'none';
+                    document.getElementById('userInfoDisplay').style.display = 'block';
+                    document.getElementById('userName').innerText = u.displayName;
+                    document.getElementById('cloudIndicator').style.display = 'block';
+                    loadCloudData();
+                } else {
+                    user = null;
+                    isCloud = false;
+                    document.getElementById('btnLoginGoogle').style.display = 'flex';
+                    document.getElementById('userInfoDisplay').style.display = 'none';
+                    document.getElementById('cloudIndicator').style.display = 'none';
+                    if (unsubscribeSync) unsubscribeSync(); 
+                }
+            });
+        } catch (e) {
+            console.error("Firebase Init Error:", e);
+        }
+
+        const DB_KEY = "HGS_V59_RESCUE"; 
+        
+        const DEFAULT_STUDENTS = [
+            "01號吳畇臻","02號曾姿涵","03號簡瑀希","04號蕭沂楨","05號吳芊葦","06號呂宥薰",
+            "07號鄭芯妮","08號李芊樺","09號潘妍萱","10號蔡媞如","11號賴薇珊","12號吉䕳亞",
+            "13號王佑妮","14號劉爰均","16號李家成","17號林思諺","18號陳柏瑋","19號盧芃宇",
+            "20號林梓樑","21號吳睿承","22號陳炘戊","23號朱品翰","24號龔允丞","25號莊孟蒝",
+            "26號陳泳璿","27號張敬浩","28號謝祐宸","29號盧岍霖"
+        ];
+        const DEFAULT_GROUPS = {
+            "第一家":["07號鄭芯妮","10號蔡媞如","22號陳炘戊","25號莊孟蒝","28號謝祐宸"],
+            "第二家":["03號簡瑀希","05號吳芊葦","12號吉䕳亞","16號李家成","21號吳睿承"],
+            "第三家":["01號吳畇臻","06號呂宥薰","19號盧芃宇","23號朱品翰","27號張敬浩"],
+            "第四家":["02號曾姿涵","04號蕭沂楨","11號賴薇珊","18號陳柏瑋","20號林梓樑"],
+            "第五家":["09號潘妍萱","14號劉爰均","24號龔允丞","26號陳泳璿"],
+            "第六家":["08號李芊樺","13號王佑妮","17號林思諺","29號盧岍霖"]
+        };
+        const LEVEL_TABLE = [
+            {lv:1, exp:0, title:"新生學徒", disc:1, priv:"無"}, {lv:2, exp:50, title:"見習學者", disc:1, priv:"無"},
+            {lv:3, exp:100, title:"初階冒險者", disc:1, priv:"無"}, {lv:4, exp:150, title:"日常挑戰者", disc:1, priv:"無"},
+            {lv:5, exp:200, title:"任務執行員", disc:1, priv:"👟 飛毛腿"}, {lv:6, exp:250, title:"活力夥伴", disc:1, priv:"無"},
+            {lv:7, exp:300, title:"星星守護者", disc:1, priv:"無"}, {lv:8, exp:350, title:"智勇特派員", disc:1, priv:"無"},
+            {lv:9, exp:400, title:"小組指揮者", disc:1, priv:"無"}, {lv:10, exp:450, title:"榮耀勇士", disc:0.9, priv:"😴 睡長"},
+            {lv:11, exp:500, title:"精進者", disc:0.9, priv:"無"}, {lv:12, exp:550, title:"閃耀學徒", disc:0.9, priv:"無"},
+            {lv:13, exp:600, title:"高階冒險者", disc:0.9, priv:"無"}, {lv:14, exp:650, title:"特技解鎖者", disc:0.9, priv:"無"},
+            {lv:15, exp:700, title:"戰術支援員", disc:0.9, priv:"🤫 安靜長"}, {lv:16, exp:750, title:"百戰實習官", disc:0.9, priv:"無"},
+            {lv:17, exp:800, title:"副指揮官", disc:0.9, priv:"無"}, {lv:18, exp:850, title:"英勇導師", disc:0.9, priv:"無"},
+            {lv:19, exp:900, title:"傳說行動者", disc:0.9, priv:"無"}, {lv:20, exp:950, title:"榮耀冒險家", disc:0.8, priv:"🚩 小隊長"},
+            {lv:21, exp:1000, title:"優等守衛", disc:0.8, priv:"無"}, {lv:22, exp:1050, title:"星級調整員", disc:0.8, priv:"無"},
+            {lv:23, exp:1100, title:"資深挑戰者", disc:0.8, priv:"無"}, {lv:24, exp:1150, title:"元老勇士", disc:0.8, priv:"無"},
+            {lv:25, exp:1200, title:"智勇戰神", disc:0.7, priv:"🏦 銀行長"}, {lv:26, exp:1250, title:"星域統帥", disc:0.7, priv:"無"},
+            {lv:27, exp:1300, title:"傳奇角色", disc:0.7, priv:"無"}, {lv:28, exp:1350, title:"榮譽殿堂", disc:0.7, priv:"無"},
+            {lv:29, exp:1400, title:"終極導師", disc:0.7, priv:"無"}, {lv:30, exp:1450, title:"神話級傳奇", disc:0.7, priv:"🧞‍♂️ 許願神燈"}
+        ];
+        const TASKS = [
+            {name:"加 1 分", pt:1, icon:"👍", desc:"一般加分"},
+            {name:"加 3 分", pt:3, icon:"⭐", desc:"良好表現"},
+            {name:"加 5 分", pt:5, icon:"🔥", desc:"優異表現"},
+            {name:"加 10 分", pt:10, icon:"🏆", desc:"重大貢獻"}
+        ];
+        
+        // 內建最高畫質的 RPG 卡牌
+        const CARDS_DEFAULT = [
+            { id: 1, rarity: '普通', name: '點數＋3', desc: '獲得 3 點經驗與金幣', icon: '🎁', imageUrl: 'https://i.postimg.cc/DZ42nymX/D001.png' },
+            { id: 2, rarity: '普通', name: '點數＋5', desc: '獲得 5 點經驗與金幣', icon: '🎁', imageUrl: 'https://i.postimg.cc/FRk9Ns1c/D002.png' },
+            { id: 3, rarity: '普通', name: '同學神救援', desc: '指定同學代答問題', icon: '🤝', imageUrl: 'https://i.postimg.cc/rmR8MFzG/D003.png' },
+            { id: 4, rarity: '普通', name: '趴睡 5 分鐘', desc: '累了休息一下', icon: '😴', imageUrl: 'https://i.postimg.cc/50QxbNjm/D004.png' },
+            { id: 5, rarity: '普通', name: '脫襪透氣權', desc: '本節課可脫襪', icon: '🧦', imageUrl: 'https://i.postimg.cc/9MwWCFzK/D005.png' },
+            { id: 6, rarity: '普通', name: '指定音樂', desc: '打掃/午餐播歌', icon: '🎵', imageUrl: 'https://i.postimg.cc/ZRvT4K0X/D006.png' },
+            { id: 7, rarity: '普通', name: '造型徽章盲盒', desc: '隨機獲得一枚徽章', icon: '📦', imageUrl: 'https://i.postimg.cc/G2Tcdh9Z/D007.png' },
+            { id: 8, rarity: '普通', name: '免做值日生', desc: '抵銷一次工作', icon: '🧹', imageUrl: 'https://i.postimg.cc/XJBV47pM/D008.png' },
+            { id: 9, rarity: '普通', name: '換位子', desc: '暫時換個風景', icon: '🪑', imageUrl: 'https://i.postimg.cc/C5yw1TfP/D009.png' },
+            
+            { id: 10, rarity: '稀有', name: '點數寶箱', desc: '直接獲得 10 點', icon: '💎', imageUrl: 'https://i.postimg.cc/JhnrYQ8W/C001.png' },
+            { id: 11, rarity: '稀有', name: '考本罰寫-1', desc: '少寫一次罰寫', icon: '✏️', imageUrl: 'https://i.postimg.cc/YSsp5m2j/C002.png' },
+            { id: 12, rarity: '稀有', name: '白板塗鴉權', desc: '下課畫畫 10 分鐘', icon: '🎨', imageUrl: 'https://i.postimg.cc/8C012rkk/C003.png' },
+            { id: 13, rarity: '稀有', name: '自由午休券', desc: '午休可安靜做其他事', icon: '🎧', imageUrl: 'https://i.postimg.cc/W4H2BJpD/C004.png' },
+            { id: 14, rarity: '稀有', name: '優先選擇權', desc: '選位/選工優先', icon: '👑', imageUrl: 'https://i.postimg.cc/KYHZ6gcT/C005.png' },
+            { id: 15, rarity: '稀有', name: '下課提早 1 分鐘', desc: '提早裝水上廁所', icon: '🏃', imageUrl: 'https://i.postimg.cc/R0DMknCQ/C006.png' },
+            { id: 16, rarity: '稀有', name: '作業延後券', desc: '延後一天繳交', icon: '⏳', imageUrl: 'https://i.postimg.cc/1tV9s54G/C007.png' },
+            
+            { id: 17, rarity: '史詩', name: '全班英雄', desc: '全班提早下課 1 分鐘', icon: '🌟', imageUrl: 'https://i.postimg.cc/Yq6Cv98M/B001.png' },
+            { id: 18, rarity: '史詩', name: '超級寶箱', desc: '直接獲得 20 點', icon: '💎', imageUrl: 'https://i.postimg.cc/CxwLkg65/B002.png' },
+            { id: 19, rarity: '史詩', name: '座位大風吹', desc: '自選座位一節', icon: '🌪️', imageUrl: 'https://i.postimg.cc/13y5wQYq/B003.png' },
+            { id: 20, rarity: '史詩', name: '求救金牌', desc: '考試問老師一題', icon: '🆘', imageUrl: 'https://i.postimg.cc/vZX8vNpK/B004.png' },
+            { id: 21, rarity: '史詩', name: '全班 DJ', desc: '午餐掌控電腦播歌', icon: '🎧', imageUrl: 'https://i.postimg.cc/W43NY7v9/B005.png' },
+            { id: 22, rarity: '史詩', name: '兌換小點心', desc: '換取實體獎勵', icon: '🍬', imageUrl: 'https://i.postimg.cc/VN6fZF8h/B006.png' },
+            { id: 23, rarity: '史詩', name: '作業減半券', desc: '指定作業寫一半', icon: '✂️', imageUrl: 'https://i.postimg.cc/R0FSpTB2/B007.png' },
+            { id: 24, rarity: '史詩', name: '好友同桌券', desc: '邀好友坐旁邊一節', icon: '🤝', imageUrl: 'https://i.postimg.cc/Bv6S7C0r/B008.png' },
+            
+            { id: 25, rarity: '傳說', name: '點數暴富', desc: '直接獲得 50 點', icon: '💰', imageUrl: 'https://i.postimg.cc/pr8XYXHv/A001.png' },
+            { id: 26, rarity: '傳說', name: '終極願望', desc: '跟老師提合理願望', icon: '🧞', imageUrl: 'https://i.postimg.cc/6qR5L5XX/A002.png' },
+            { id: 27, rarity: '傳說', name: '免寫小作業', desc: '免寫一項簡單作業', icon: '📝', imageUrl: 'https://i.postimg.cc/brbNHNhj/A003.png' },
+            { id: 28, rarity: '傳說', name: '黃金 30 秒', desc: '考試翻課本 30 秒', icon: '⏱️', imageUrl: 'https://i.postimg.cc/D0sydyTV/A004.png' },
+            { id: 29, rarity: '傳說', name: '自選座位 (一週)', desc: '整週坐指定位子', icon: '🪑', imageUrl: 'https://i.postimg.cc/T1mYqY65/A005.png' },
+            { id: 30, rarity: '傳說', name: '召喚老師', desc: '老師幫忙掃地', icon: '🪄', imageUrl: 'https://i.postimg.cc/MZjT8tQv/A006.png' },
+            { id: 31, rarity: '傳說', name: '免死金牌', desc: '抵銷一次違規', icon: '🛡️', imageUrl: 'https://i.postimg.cc/SNFKQ86c/A007.png' },
+            { id: 32, rarity: '傳說', name: '電影話事權', desc: '決定下次看什麼片', icon: '🎬', imageUrl: 'https://i.postimg.cc/Nf6jKMD6/A008.png' },
+            { id: 33, rarity: '傳說', name: '經驗大補帖', desc: '直接 +100 EXP', icon: '🍄', imageUrl: 'https://i.postimg.cc/CLGxR1Jy/A009.png' }
+        ];
+
+        const RATES_DEFAULT = [
+            { name: "普通", prob: 60 },
+            { name: "稀有", prob: 30 },
+            { name: "史詩", prob: 8 },
+            { name: "傳說", prob: 2 }
+        ];
+
+        const CLASS_REWARDS_DEFAULT = [
+            {name:"5分鐘垃圾話時間", desc:"下課前全班自由聊天"}, {name:"桌遊/棋藝大賽", desc:"玩20分鐘桌遊"}, {name:"熱門 MV 欣賞", desc:"票選播放一首MV"}
+        ];
+
+        let data = { students: {}, groups: DEFAULT_GROUPS, classPoints: 0, teacherPw: "740821", helperPw: "1234", classHistory: [], classInventory: [], cards: [], gachaRates: [], classRewards: [], secret: null, boss: null };
+        let revealed = { secret: false, boss: false };
+        let curStu = "", isBatch = false, selStus = new Set(), soundOn = true, userRole = null, wheelWinners = [];
+        let loginTargetRole = ''; 
+        const ac = new (window.AudioContext||window.webkitAudioContext)();
+
+        // 核心解法：精簡重構 0327.json 救援資料
+        function runRescueData() {
+            // 利用緊湊的陣列格式重建分數與背包，確保完全不會出現截斷或語法錯誤
+            const scores = {
+                "01號吳畇臻":{c:134,e:154,i:[]},"02號曾姿涵":{c:156,e:156,i:[]},"03號簡瑀希":{c:166,e:186,i:[4]},"04號蕭沂楨":{c:163,e:203,i:[12,6]},
+                "05號吳芊葦":{c:177,e:177,i:[]},"06號呂宥薰":{c:234,e:234,i:[]},"07號鄭芯妮":{c:159,e:179,i:[21]},"08號李芊樺":{c:72,e:152,i:[8,7,13,2]},
+                "09號潘妍萱":{c:156,e:156,i:[]},"10號蔡媞如":{c:133,e:173,i:[1,12]},"11號賴薇珊":{c:153,e:153,i:[]},"12號吉䕳亞":{c:20,e:160,i:[13,14,3,6,3,8]},
+                "13號王佑妮":{c:154,e:154,i:[]},"14號劉爰均":{c:118,e:118,a:true,i:[]},"16號李家成":{c:28,e:228,i:[3,5,12,5,13,16,12]},"17號林思諺":{c:18,e:98,i:[4,14,11,6]},
+                "18號陳柏瑋":{c:88,e:128,b:["💧"],i:[]},"19號盧芃宇":{c:53,e:133,i:[4,12]},"20號林梓樑":{c:162,e:162,i:[]},"21號吳睿承":{c:143,e:203,i:[19]},
+                "22號陳炘戊":{c:16,e:156,i:[4,8,8,4,8,16]},"23號朱品翰":{c:247,e:267,a:true,i:[]},"24號龔允丞":{c:14,e:174,b:["🟡"],i:[3,6,4,16,13]},"25號莊孟蒝":{c:18,e:178,i:[5,3,9,12,12]},
+                "26號陳泳璿":{c:164,e:184,i:[15]},"27號張敬浩":{c:152,e:192,i:[13,8]},"28號謝祐宸":{c:140,e:160,i:[32]},"29號盧岍霖":{c:98,e:98,i:[]}
+            };
+            
+            data.students = {};
+            for(let n in scores) {
+                let d = scores[n];
+                let inv = [];
+                d.i.forEach(id => {
+                    let card = CARDS_DEFAULT.find(c => c.id === id);
+                    if(card) inv.push({id: card.id, name: card.name, rarity: card.rarity, desc: card.desc, time: "2026/3/27", isCard: true});
+                });
+                // 額外救援遺失的五行徽章
+                if(n === "21號吳睿承") inv.push({name: "💧 水行徽章", desc: "盲盒開出", time: "2026/3/27"});
+                if(n === "19號盧芃宇") inv.push({name: "💧 水行徽章", desc: "盲盒開出", time: "2026/3/20"});
+
+                data.students[n] = {
+                    coins: d.c, exp: d.e, absent: d.a || false, badges: d.b || [], history: [], inventory: inv
+                };
+            }
+            data.classPoints = 43;
+            data.boss = "13號王佑妮";
+            data.secret = "27號張敬浩";
+            data.groups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
+            data.cards = JSON.parse(JSON.stringify(CARDS_DEFAULT));
+            data.classRewards = JSON.parse(JSON.stringify(CLASS_REWARDS_DEFAULT));
+            data.gachaRates = JSON.parse(JSON.stringify(RATES_DEFAULT));
+        }
+
+        window.onload = () => {
+            // 第一步：如果是全新開啟這個 v58，我們強制灌入 3/27 的神聖救援檔
+            if(!localStorage.getItem(DB_KEY)) {
+                runRescueData();
+                saveData(); // 儲存並準備顯示
+                localStorage.setItem(DB_KEY, "RESCUED_SUCCESS");
+                console.log("資料已經完美還原至 3/27 狀態！");
+            } else {
+                // 如果已經還原過，就正常讀取
+                try {
+                    const local = JSON.parse(localStorage.getItem("HGS_V58_DATA"));
+                    if(local) data = local;
+                } catch(e) { }
+            }
+            
+            // 例行檢查
+            if(!data.cards || !data.cards.length) data.cards = JSON.parse(JSON.stringify(CARDS_DEFAULT));
+            if(!data.gachaRates || !data.gachaRates.length) data.gachaRates = JSON.parse(JSON.stringify(RATES_DEFAULT));
+            if(!data.classRewards || !data.classRewards.length) data.classRewards = JSON.parse(JSON.stringify(CLASS_REWARDS_DEFAULT));
+            
+            renderUI(); fillLevelTable(); document.getElementById('pinInput').focus();
+        };
+
+        // --- CLOUD ---
+        function doLogin() {
+            if (window.location.protocol === 'file:') return alert("請上傳至 Netlify 後使用 Google 登入。");
+            if(!auth) return alert("Firebase 初始化失敗");
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).catch(e => alert("登入失敗: " + e.message));
+        }
+        function doLogout() { if (unsubscribeSync) unsubscribeSync(); auth.signOut(); }
+
+        function loadCloudData() {
+            if(!isCloud || !user) return;
+            const docRef = db.collection('users').doc(user.uid).collection('honor_system').doc('main_data');
+            document.getElementById('loading-overlay').style.display = 'flex';
+            if(unsubscribeSync) unsubscribeSync();
+            
+            unsubscribeSync = docRef.onSnapshot((docSnap) => {
+                if(docSnap.exists) {
+                    let cloudData = docSnap.data();
+                    
+                    // 防呆機制：如果雲端資料全空（0分），則直接無視雲端，強制把我們本地還原好的 3/27 資料蓋上去
+                    let totalCoins = 0;
+                    if(cloudData.students) {
+                        Object.values(cloudData.students).forEach(s => totalCoins += (s.coins || 0));
+                    }
+                    
+                    if (totalCoins === 0) {
+                        console.log("偵測到雲端資料異常歸零，已自動啟動反制機制，將本地備份蓋回雲端。");
+                        saveData(); // 強制把當前的本地 data 覆寫上雲端
+                    } else {
+                        data = cloudData;
+                        // 確保圖片是最高畫質
+                        data.cards.forEach(c => {
+                            const def = CARDS_DEFAULT.find(d => d.id === c.id);
+                            if (def) c.imageUrl = def.imageUrl;
+                        });
+                        if(!data.gachaRates || !data.gachaRates.length) data.gachaRates = JSON.parse(JSON.stringify(RATES_DEFAULT));
+                        if(!data.classRewards || !data.classRewards.length) data.classRewards = JSON.parse(JSON.stringify(CLASS_REWARDS_DEFAULT));
+                        renderUI(); 
+                    }
+                } else { 
+                    saveData(); // 雲端全空，上傳本地
+                }
+                document.getElementById('loading-overlay').style.display = 'none';
+            }, (error) => {
+                console.error("同步錯誤:", error);
+                document.getElementById('loading-overlay').style.display = 'none';
+            });
+        }
+
+        function initDefaultData() {
+            runRescueData(); // 若遇到極端情況，也強制回到 3/27
+            saveData();
+        }
+        
+        function saveData() { 
+            if(isCloud && user) {
+                db.collection('users').doc(user.uid).collection('honor_system').doc('main_data').set(data)
+                .catch(e => console.error("Cloud Save Error", e));
+            } else {
+                localStorage.setItem("HGS_V58_DATA", JSON.stringify(data)); 
+            }
+            renderUI(); 
+        }
+
+        // --- FX ---
+        function createParticles(x, y, text) {
+            const p = document.createElement('div');
+            p.className = 'particle'; p.innerText = text; p.style.left = x + 'px'; p.style.top = y + 'px';
+            document.body.appendChild(p); setTimeout(() => p.remove(), 1000);
+        }
+        function sfx(type) {
+            if(!soundOn) return;
+            if(ac.state === 'suspended') ac.resume();
+            const o = ac.createOscillator(); const g = ac.createGain();
+            o.connect(g); g.connect(ac.destination);
+            if(type === 'coin') {
+                o.frequency.setValueAtTime(1000, ac.currentTime); o.frequency.exponentialRampToValueAtTime(2000, ac.currentTime + 0.1);
+                g.gain.exponentialRampToValueAtTime(0.01, ac.currentTime + 0.1); o.start(); o.stop(ac.currentTime + 0.1);
+            } else if(type === 'win') {
+                [523, 659, 784, 1046].forEach((f, i) => {
+                    const osc = ac.createOscillator(); const gn = ac.createGain();
+                    osc.connect(gn); gn.connect(ac.destination);
+                    osc.frequency.value = f; osc.start(ac.currentTime + i*0.1);
+                    gn.gain.exponentialRampToValueAtTime(0.01, ac.currentTime + i*0.1 + 0.3); osc.stop(ac.currentTime + i*0.1 + 0.3);
+                });
+            } else if(type === 'error') {
+                o.type = 'sawtooth'; o.frequency.value = 150; g.gain.exponentialRampToValueAtTime(0.01, ac.currentTime + 0.3); o.start(); o.stop(ac.currentTime + 0.3);
+            } else if(type === 'magic') {
+                o.type = 'sine'; o.frequency.setValueAtTime(400, ac.currentTime); o.frequency.linearRampToValueAtTime(800, ac.currentTime + 0.5);
+                g.gain.setValueAtTime(0, ac.currentTime); g.gain.linearRampToValueAtTime(0.1, ac.currentTime + 0.2); g.gain.linearRampToValueAtTime(0, ac.currentTime + 0.5);
+                o.start(); o.stop(ac.currentTime + 0.5);
+            }
+        }
+
+        // --- AUTH ---
+        function selectRole(r) { loginTargetRole = r; document.getElementById('roleSelect').style.display='none'; document.getElementById('pinArea').style.display='block'; document.getElementById('loginTitle').innerText = r === 'teacher' ? '👨‍🏫 老師登入' : '👦 小幫手登入'; document.getElementById('pinInput').focus(); }
+        function backToRole() { document.getElementById('roleSelect').style.display='grid'; document.getElementById('pinArea').style.display='none'; document.getElementById('loginMsg').innerText=''; document.getElementById('pinInput').value=''; }
+        function checkLogin() { const v = document.getElementById('pinInput').value.trim(); if (loginTargetRole === 'teacher') { if (v === data.teacherPw) { userRole = 'teacher'; successLogin(); } else { document.getElementById('loginMsg').innerText = '密碼錯誤'; sfx('error'); } } else if (loginTargetRole === 'helper') { if (v === data.helperPw) { userRole = 'helper'; successLogin(); } else { document.getElementById('loginMsg').innerText = '密碼錯誤'; sfx('error'); } } }
+        function successLogin() { document.getElementById('loginOverlay').style.display='none'; document.getElementById('pinInput').value=''; document.getElementById('loginMsg').innerText=''; document.body.className = (userRole==='teacher') ? 'role-teacher' : 'role-helper'; if(userRole==='helper') { isBatch=true; selStus.clear(); document.getElementById('batchBar').style.display='flex'; document.querySelector('.admin-only').style.display='none'; } else { isBatch=false; toggleBatch(); } renderUI(); sfx('win'); }
+        function lockSystem() { userRole=null; document.body.className=''; document.getElementById('loginOverlay').style.display='flex'; backToRole(); }
+        function changePw(t) { const p=prompt("新密碼:"); if(p&&p.trim()) { if(t==='teacher') data.teacherPw=p.trim(); else data.helperPw=p.trim(); saveData(); alert("OK"); } }
+        
+        // --- LOGIC ---
+        function getLevelInfo(exp) { for(let i=LEVEL_TABLE.length-1; i>=0; i--) if(exp >= LEVEL_TABLE[i].exp) return LEVEL_TABLE[i]; return LEVEL_TABLE[0]; }
+        function getRankColor(lv) { if(lv<10)return `hsl(0,0%,${100-(lv*3)}%)`; if(lv<20)return `hsl(0,100%,${96-((lv-10)*2)}%)`; if(lv<25)return `hsl(210,100%,${95-((lv-20)*4)}%)`; return `hsl(45,100%,${92-((lv-25)*5)}%)`; }
+
+        function renderUI() {
+            const g = document.getElementById('studentGrid'); g.innerHTML = '';
+            if(!data.students) initDefaultData();
+            
+            const sortedNames = Object.keys(data.students).sort((a, b) => {
+                const numA = parseInt(a) || 0; const numB = parseInt(b) || 0; return numA - numB;
+            });
+            
+            sortedNames.forEach(name => {
+                const s = data.students[name]; const lvInfo = getLevelInfo(s.exp);
+                let nextExp = 1500; for(let i=0; i<LEVEL_TABLE.length; i++) if(LEVEL_TABLE[i].lv === lvInfo.lv + 1) { nextExp = LEVEL_TABLE[i].exp; break; }
+                const pct = Math.min(100, Math.max(0, (s.exp - lvInfo.exp) / (nextExp - lvInfo.exp) * 100));
+                const bgColor = getRankColor(lvInfo.lv);
+                
+                let badgeHtml = '';
+                if(s.badges && s.badges.length > 0) {
+                    const sortedBadges = ["🟡","🌲","💧","🔥","⛰️"];
+                    const myBadges = s.badges.sort((a,b) => sortedBadges.indexOf(a) - sortedBadges.indexOf(b));
+                    badgeHtml = `<div class="badge-container" onclick="triggerFiveElements('${name}')" title="點擊發動五行大獎" class="${s.badges.length===5?'five-elements-ready':''}">${myBadges.map(b=>`<span class="badge-icon">${b}</span>`).join('')}</div>`;
+                    if(s.badges.length===5) badgeHtml = `<div class="badge-container five-elements-ready" onclick="triggerFiveElements('${name}')" title="✨ 五行集齊！點擊發動！">${myBadges.map(b=>`<span class="badge-icon">${b}</span>`).join('')}</div>`;
+                }
+                
+                const card = document.createElement('div');
+                card.className = `card ${s.absent?'absent':''} ${selStus.has(name)?'selected':''}`;
+                card.style.background = `linear-gradient(to bottom right, #ffffff, ${bgColor})`;
+                if(s.absent) card.style.background = '#f0f0f0';
+                if(isBatch) card.onclick = () => toggleSel(name);
+
+                let actHtml = s.absent ? `<div style="color:red;font-weight:bold;text-align:center;margin-top:10px;">🔴 請假</div>` :
+                    (isBatch ? `<div style="color:#aaa;font-size:12px;text-align:center;margin-top:10px;" class="helper-prompt">點擊選取</div>` : 
+                    `<div class="card-actions-wrapper"><div class="quick-actions"><button class="btn-act btn-plus" onclick="event.stopPropagation(); simpleAdd('${name}', event)">+1</button><button class="btn-act btn-gacha" onclick="event.stopPropagation(); openGacha('${name}')">🔮</button></div><button class="btn-bag ${s.inventory.length>0?'has-item':''}" onclick="event.stopPropagation(); openDetail('${name}','bag')">🎒 ${s.inventory.length}</button></div>`);
+
+                card.innerHTML = `<div class="card-header"><div class="card-name">${name}</div><div class="card-lv">Lv.${lvInfo.lv}</div></div>
+                                  <div class="title-row"><div class="card-title">${lvInfo.title}</div>${badgeHtml}</div>
+                                  <div class="xp-bar" title="EXP: ${s.exp}/${nextExp}"><div class="xp-fill" style="width:${pct}%"></div></div><div class="coin-display">🪙 ${s.coins}</div>${actHtml}`;
+                g.appendChild(card);
+            });
+            document.getElementById('classScoreText').innerText = data.classPoints;
+            const bd = document.querySelector('.mascot-container');
+            bd.style.background = data.classPoints >= 50 ? "linear-gradient(135deg, #ff9a9e, #fecfef)" : "linear-gradient(135deg, #fff3e0, #ffe0b2)";
+            if(userRole==='teacher') { updMyst('secret'); updMyst('boss'); }
+        }
+
+        function simpleAdd(name, e) { applyTask("表現優良", 1, name); if(e) createParticles(e.clientX, e.clientY, "+1"); }
+
+        function applyTask(r, a, tName) {
+            let tg = tName ? [tName] : (isBatch&&selStus.size>0 ? Array.from(selStus) : (curStu ? [curStu] : []));
+            if(!tg.length) return alert("無對象");
+            tg.forEach(n => { if(data.students[n]) { data.students[n].coins+=a; data.students[n].exp+=a; logHist(n, `${r} (+${a})`); } });
+            const presentCount = Object.keys(data.students).filter(n => !data.students[n].absent).length;
+            if (tg.length === presentCount && presentCount > 0) { logClassHist(`全班任務: ${r}`, 1); }
+            saveData(); 
+            if(isBatch) { closeModal('taskModal'); if(userRole==='teacher') toggleBatch(); else { selStus.clear(); renderUI(); } alert(`✅ 已派發`); } else { closeModal('taskModal'); sfx('coin'); renderUI(); }
+        }
+
+        function openBatchTask() { if(!selStus.size) return alert("未選"); isBatch=true; openTaskModalInternal(true); }
+        function openTask(n) { curStu=n; selStus.clear(); isBatch=false; openTaskModalInternal(false); }
+        function openTaskModalInternal(m) {
+            const list = document.getElementById('taskList'); list.innerHTML='';
+            document.getElementById('taskTarget').innerText = m ? `對象：${selStus.size}人` : `對象：${curStu}`;
+            TASKS.forEach(t => { 
+                const el=document.createElement('div'); el.className='task-btn'; 
+                el.innerHTML=`<span class="task-icon">${t.icon}</span><div class="task-info"><div class="task-title">${t.name}</div><div class="task-pts">+${t.pt}</div><div class="task-desc">${t.desc}</div></div>`; 
+                el.onclick=()=>applyTask(t.name, t.pt); 
+                list.appendChild(el); 
+            });
+            openModal('taskModal');
+        }
+
+        // --- GACHA SYSTEM ---
+        function openGacha(name) {
+            curStu = name;
+            document.getElementById('gachaUser').innerText = name;
+            document.getElementById('gachaCoins').innerText = data.students[name].coins;
+            document.getElementById('gachaOverlay').style.display = 'flex';
+            document.getElementById('altarMain').style.display = 'block';
+            document.getElementById('gachaResult').style.display = 'none';
+        }
+        function closeGacha() {
+            document.getElementById('gachaOverlay').style.display = 'none';
+            renderUI();
+        }
+
+        function rollRarity(isGuaranteeEpic) {
+            let rand = Math.random() * 100;
+            if (isGuaranteeEpic) {
+                let epicProb = data.gachaRates.find(r=>r.name==='史詩')?.prob || 8;
+                let legProb = data.gachaRates.find(r=>r.name==='傳說')?.prob || 2;
+                let total = epicProb + legProb;
+                return (rand <= (legProb/total)*100) ? '傳說' : '史詩';
+            }
+            let s = 0;
+            for(let i of data.gachaRates) {
+                s += i.prob;
+                if(rand <= s) return i.name;
+            }
+            return '普通';
+        }
+
+        function buildCardUI(card) {
+            if(!card) return '';
+            let styleClass = `rarity-${card.rarity}`;
+            let content = '';
+            let isImg = false;
+
+            if (card.imageUrl && card.imageUrl.trim() !== '') {
+                content = `<img src="${card.imageUrl}" class="card-ui-img" onerror="this.style.display='none'; this.parentElement.classList.remove('has-img')">
+                           <div class="card-id">No.${card.id}</div>
+                           <div class="card-rarity">${card.rarity}</div>
+                           <div class="card-icon">${card.icon}</div>
+                           <div class="card-title">${card.name}</div>
+                           <div class="card-desc">${card.desc}</div>`;
+                isImg = true;
+            } else {
+                content = `<div class="card-id">No.${card.id}</div>
+                           <div class="card-rarity">${card.rarity}</div>
+                           <div class="card-icon">${card.icon}</div>
+                           <div class="card-title">${card.name}</div>
+                           <div class="card-desc">${card.desc}</div>`;
+            }
+
+            return `<div class="fancy-card ${styleClass} ${isImg ? 'has-img' : ''}">${content}</div>`;
+        }
+
+        function doGacha(times) {
+            const cost = times === 1 ? 20 : 200;
+            if(data.students[curStu].coins < cost) {
+                alert(`金幣不足！需要 ${cost} 金幣。`);
+                return;
+            }
+            
+            if(!confirm(`確定消耗 ${cost} 金幣召喚 ${times} 次？`)) return;
+
+            data.students[curStu].coins -= cost;
+            logHist(curStu, `魔法召喚 ${times}次 (-${cost} 幣)`);
+            sfx('magic');
+            
+            const altar = document.getElementById('altarMain');
+            altar.style.animation = 'shake-hard 0.5s infinite';
+            
+            setTimeout(() => {
+                altar.style.animation = 'none';
+                altar.style.display = 'none';
+                
+                let results = [];
+                for(let i=0; i<times; i++) {
+                    let isGuarantee = (times === 10 && i === 9); 
+                    let targetRarity = rollRarity(isGuarantee);
+                    let pool = data.cards.filter(c => c.rarity === targetRarity);
+                    if(!pool.length) pool = data.cards;
+                    let card = pool[Math.floor(Math.random() * pool.length)];
+                    results.push(card);
+                    
+                    data.students[curStu].inventory.push({
+                        id: card.id, name: card.name, rarity: card.rarity, desc: card.desc, time: new Date().toLocaleDateString(), isCard: true
+                    });
+                }
+                
+                const rc = document.getElementById('gachaCardContainer');
+                rc.className = 'card-result-container ' + (times === 1 ? 'single-draw' : 'multi-draw');
+                rc.innerHTML = results.map(c => buildCardUI(c)).join('');
+                document.getElementById('gachaResult').style.display = 'block';
+                
+                let hasEpic = results.some(c=>c.rarity==='史詩'||c.rarity==='傳說');
+                if(hasEpic) sfx('win'); else sfx('coin');
+                
+                saveData();
+                document.getElementById('gachaCoins').innerText = data.students[curStu].coins;
+            }, 1500);
+        }
+
+        // --- BACKPACK & ITEMS ---
+        function renderBag() {
+            const list = document.getElementById('bagList'); list.innerHTML=''; const inv=data.students[curStu].inventory;
+            
+            const elements = ["🟡 金行徽章","🌲 木行徽章","💧 水行徽章","🔥 火行徽章","⛰️ 土行徽章"];
+            const hasAll = elements.every(e => inv.some(i => (i.name||i.n) === e));
+            let btn = document.getElementById('btnFiveElements');
+            if(btn) btn.style.display = hasAll ? 'flex' : 'none';
+
+            if(!inv.length) { list.innerHTML='<div style="text-align:center;padding:20px;color:#ccc;width:100%">背包空空</div>'; return; }
+            
+            inv.forEach((item, idx) => {
+                const n = item.name||item.n||"物品";
+                let rarityTag = item.rarity ? `<span style="font-size:10px; background:#333; color:white; padding:2px 5px; border-radius:4px;">${item.rarity}</span>` : '';
+                
+                list.innerHTML += `
+                <div style="width:100%; border-bottom: 1px solid #eee; padding: 10px 5px; display: flex; justify-content: space-between; align-items: center; background: ${item.rarity==='傳說'?'#fef9e7':item.rarity==='史詩'?'#f5eef8':item.rarity==='稀有'?'#ebf5fb':'#fff'}; border-radius:8px; margin-bottom:5px;">
+                    <div>
+                        <div style="font-weight:bold; display:flex; align-items:center; gap:5px;">${rarityTag} ${n}</div>
+                        <div style="font-size:11px; color:#aaa; margin-top:2px;">${item.desc||item.time||''}</div>
+                    </div>
+                    <button class="tool-btn btn-blue" style="padding:6px 15px; font-size:12px;" onclick="useItem(${idx},'${n}')">使用</button>
+                </div>`;
+            });
+        }
+
+        function useItem(idx, n) {
+            if(!confirm(`確定要使用【${n}】嗎？`)) return;
+            
+            const s = data.students[curStu];
+            s.inventory.splice(idx, 1);
+            logHist(curStu, `使用了 ${n}`);
+            
+            if(n.includes("點數＋3")) { s.coins+=3; s.exp+=3; alert("金幣與經驗 +3！"); sfx('coin'); }
+            else if(n.includes("點數＋5")) { s.coins+=5; s.exp+=5; alert("金幣與經驗 +5！"); sfx('coin'); }
+            else if(n.includes("點數寶箱")) { s.coins+=10; s.exp+=10; alert("金幣與經驗 +10！"); sfx('coin'); }
+            else if(n.includes("超級寶箱")) { s.coins+=20; s.exp+=20; alert("金幣與經驗 +20！"); sfx('coin'); }
+            else if(n.includes("點數暴富")) { s.coins+=50; s.exp+=50; alert("💰 暴富啦！金幣與經驗 +50！"); sfx('win'); }
+            else if(n.includes("經驗大補帖")) { s.exp+=100; alert("💪 經驗值 +100！"); sfx('win'); }
+            else if(n === "造型徽章盲盒") {
+                const elements = ["🟡 金行徽章", "🌲 木行徽章", "💧 水行徽章", "🔥 火行徽章", "⛰️ 土行徽章"];
+                const won = elements[Math.floor(Math.random() * elements.length)];
+                s.inventory.push({name: won, time: new Date().toLocaleDateString(), desc: "盲盒開出"});
+                alert(`📦 盲盒打開了... 獲得了【${won}】！`);
+            }
+            else if(n.includes("行徽章")) {
+                let icon = "🏅"; 
+                if(n.includes("金")) icon = "🟡"; if(n.includes("木")) icon = "🌲";
+                if(n.includes("水")) icon = "💧"; if(n.includes("火")) icon = "🔥"; if(n.includes("土")) icon = "⛰️";
+                if(s.badges.includes(icon)) { alert(`身上已經有 ${icon} 了，徽章消散了...`); }
+                else { s.badges.push(icon); alert(`裝備了 ${icon}！`); }
+            }
+            else {
+                sfx('win'); alert(`✅ 已成功發動【${n}】的效果！`);
+            }
+            
+            saveData(); renderUI(); renderBag(); updateBagBadge();
+        }
+
+        // --- CARD EDITOR ---
+        function openCardEditor() { 
+            const l = document.getElementById('ceList'); l.innerHTML = ''; 
+            data.cards.forEach((c, x) => { 
+                l.innerHTML += `
+                <div class="card-edit-row">
+                    <select onchange="data.cards[${x}].rarity=this.value;saveData()">
+                        <option ${c.rarity==='普通'?'selected':''}>普通</option>
+                        <option ${c.rarity==='稀有'?'selected':''}>稀有</option>
+                        <option ${c.rarity==='史詩'?'selected':''}>史詩</option>
+                        <option ${c.rarity==='傳說'?'selected':''}>傳說</option>
+                    </select>
+                    <input type="text" value="${c.name}" onchange="data.cards[${x}].name=this.value;saveData()">
+                    <input type="text" value="${c.desc||''}" onchange="data.cards[${x}].desc=this.value;saveData()">
+                    <input type="text" value="${c.icon||'✨'}" onchange="data.cards[${x}].icon=this.value;saveData()">
+                    <input type="text" value="${c.imageUrl||''}" placeholder="http..." onchange="data.cards[${x}].imageUrl=this.value;saveData()">
+                    <button class="tool-btn btn-red" onclick="if(confirm('刪除?')){data.cards.splice(${x},1);saveData();openCardEditor();}">X</button>
+                </div>`; 
+            }); 
+            openModal('cardEditModal'); 
+        }
+        
+        function addCard() { 
+            const cat = document.getElementById('ncCat').value;
+            const name = document.getElementById('ncName').value.trim();
+            const desc = document.getElementById('ncDesc').value.trim();
+            const icon = document.getElementById('ncIcon').value.trim() || '✨';
+            const img = document.getElementById('ncImg').value.trim();
+            if(!name) return alert("請輸入名稱");
+            
+            let nextId = data.cards.length > 0 ? Math.max(...data.cards.map(c=>c.id)) + 1 : 1;
+            data.cards.push({ id: nextId, rarity: cat, name: name, desc: desc, icon: icon, imageUrl: img }); 
+            saveData(); 
+            openCardEditor(); 
+            
+            document.getElementById('ncName').value = '';
+            document.getElementById('ncDesc').value = '';
+            document.getElementById('ncImg').value = '';
+        }
+
+        // --- OTHER BOILERPLATE ---
+        function openDetail(n, t) { curStu=n; const s=data.students[n], lv=getLevelInfo(s.exp); document.getElementById('detName').innerText=n; document.getElementById('detTitle').innerText=lv.title; document.getElementById('detLv').innerText=lv.lv; document.getElementById('detExp').innerText=s.exp; openModal('detailModal'); updateBagBadge(); swTab(t); }
+        function swTab(t) { const m=document.getElementById('detailModal'); m.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); m.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active')); if(t==='bag'){ m.querySelectorAll('.tab')[0].classList.add('active'); document.getElementById('t-bag').classList.add('active'); renderBag(); } if(t==='hist'){ m.querySelectorAll('.tab')[1].classList.add('active'); document.getElementById('t-hist').classList.add('active'); renderHist(); } if(t==='edit'){ m.querySelectorAll('.tab')[2].classList.add('active'); document.getElementById('t-edit').classList.add('active'); } }
+        function renderHist() { const l=document.getElementById('histList'); l.innerHTML=''; data.students[curStu].history.forEach(h=>{l.innerHTML+=`<div class="hist-row"><div>${h.t}</div><div>${h.msg}</div></div>`;}); }
+        function updateBagBadge() { const b=document.getElementById('bagBadge'); b.innerText=data.students[curStu].inventory.length; b.style.display=b.innerText==='0'?'none':'inline-block'; }
+        function manualAdj(v) { data.students[curStu].coins += v; data.students[curStu].exp += v; logHist(curStu, `手動調整 (${v>0?'+':''}${v})`); saveData(); renderUI(); alert("OK"); }
+        function clearBag() { if(confirm('清空?')){ data.students[curStu].inventory=[]; saveData(); renderBag(); updateBagBadge(); } }
+        function adminGiveBadge(icon) { if(data.students[curStu].badges.includes(icon)) { alert("已有"); return; } data.students[curStu].badges.push(icon); saveData(); renderUI(); alert(`已給予 ${icon}`); }
+        function logHist(n,m) { const t=new Date().toLocaleString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}); data.students[n].history.unshift({t:t,msg:m}); if(data.students[n].history.length>30)data.students[n].history.pop(); }
+        
+        function saveGe() { let n=[]; document.getElementById('geInput').value.split('\n').forEach(l=>{ let p=l.split(','); if(p.length==2)n.push({name:p[0].trim(),prob:parseInt(p[1])}); }); if(n.length){data.gachaRates=n;saveData();closeModal('gachaEditModal');} }
+        function openModal(id) { if(id==='gachaEditModal'){let t="";data.gachaRates.forEach(i=>t+=`${i.name},${i.prob}\n`);document.getElementById('geInput').value=t;} if(id==='attendModal')renderAttend(); if(id==='managerModal'){ document.getElementById('mgrInput').value=Object.keys(data.students).join('\n'); let groupText = ""; for(let gName in data.groups) { groupText += `${gName}: ${data.groups[gName].join(',')}\n`; } document.getElementById('groupEditor').value = groupText; } if(id==='levelTableModal') { switchLvTab('new'); } document.getElementById(id).style.display='flex'; sfx('coin'); }
+        function closeModal(id) { document.getElementById(id).style.display='none'; }
+        function renderAttend() { const g=document.getElementById('attendGrid'); g.innerHTML=''; const sortedNames = Object.keys(data.students).sort((a,b)=>parseInt(a)-parseInt(b)); sortedNames.forEach(n=>{ const s=data.students[n]; const d=document.createElement('div'); d.style=`border:1px solid #ddd;padding:5px;text-align:center;border-radius:4px;cursor:pointer;background:${s.absent?'#fadbd8':'#d4efdf'};color:${s.absent?'#c0392b':'#1e8449'};`; d.innerText=n+(s.absent?'(假)':''); d.onclick=()=>{s.absent=!s.absent;saveData();renderAttend();renderUI();}; g.appendChild(d); }); }
+        
+        function openFamilyRank(){ const fl=document.getElementById('familyRankList'); fl.innerHTML=''; let fr=[]; Object.keys(data.groups).forEach(g=>{ let s=0; data.groups[g].forEach(n=>{ if(data.students[n]) s+=data.students[n].exp; }); fr.push({n:g,s:s}); }); fr.sort((a,b)=>b.s-a.s); const fmax=fr[0]?.s||1; fr.forEach((x,i)=>{ fl.innerHTML+=`<div class="rank-bar-container"><div class="rank-bar-label"><span>${i+1}. ${x.n}</span><span>${x.s} EXP</span></div><div class="rank-bar-track"><div class="rank-bar-fill" style="width:${(x.s/fmax)*100}%"></div></div></div>`; }); const il=document.getElementById('individualRankList'); il.innerHTML=''; let ir=[]; Object.keys(data.students).forEach(n=>{ ir.push({n:n, s:data.students[n].exp}); }); ir.sort((a,b)=>b.s-a.s); const top10 = ir.slice(0, 10); const imax=top10[0]?.s||1; top10.forEach((x,i)=>{ let medal = i===0 ? '🥇' : (i===1 ? '🥈' : (i===2 ? '🥉' : `${i+1}.`)); il.innerHTML+=`<div class="rank-bar-container"><div class="rank-bar-label"><span>${medal} ${x.n}</span><span>${x.s} EXP</span></div><div class="rank-bar-track"><div class="rank-bar-fill" style="width:${(x.s/imax)*100}%; background: var(--accent);"></div></div></div>`; }); swRankTab('family'); openModal('familyRankModal'); }
+        function swRankTab(t) { const m=document.getElementById('familyRankModal'); m.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); m.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active')); if(t==='family'){ m.querySelectorAll('.tab')[0].classList.add('active'); document.getElementById('t-familyRank').classList.add('active'); } else if(t==='individual'){ m.querySelectorAll('.tab')[1].classList.add('active'); document.getElementById('t-individualRank').classList.add('active'); } }
+        function saveGroups(){ const t=document.getElementById('groupEditor').value; const lines=t.split('\n'); let ng={}; lines.forEach(l=>{ const p=l.split(':'); if(p.length===2) ng[p[0].trim()]=p[1].split(',').map(x=>x.trim()).filter(x=>x); }); if(Object.keys(ng).length){ data.groups=ng; saveData(); alert("Saved"); } }
+        function toggleFamilyMenu(){ const m=document.getElementById('familyMenu'); if(m.style.display==='grid'){m.style.display='none';}else{ m.innerHTML=''; Object.keys(data.groups).forEach(g=>{ const b=document.createElement('button'); b.className='tool-btn btn-purple'; b.innerText=g; b.onclick=()=>{ selectGroup(g); }; m.appendChild(b); }); m.style.display='grid'; } }
+        function selectGroup(g){ const mems=data.groups[g]; if(mems){ mems.forEach(n=>{ if(data.students[n]&&!data.students[n].absent) selStus.add(n); }); document.getElementById('batchCount').innerText=`已選 ${selStus.size}`; renderUI(); sfx('coin'); } }
+        function toggleBatch() { if(userRole==='teacher') { isBatch=!isBatch; selStus.clear(); document.getElementById('batchBar').style.display=isBatch?'flex':'none'; renderUI(); } }
+        function toggleSel(n) { if(data.students[n].absent) return; if(selStus.has(n)) selStus.delete(n); else selStus.add(n); document.getElementById('batchCount').innerText=`已選 ${selStus.size}`; sfx('coin'); renderUI(); }
+        function selectAll() { Object.keys(data.students).forEach(n=>{if(!data.students[n].absent)selStus.add(n);}); document.getElementById('batchCount').innerText=`已選 ${selStus.size}`; renderUI(); }
+        function openBatchDeposit() {
+            if(!selStus.size) return alert("請先選取學生！");
+            let amt = prompt("請輸入要存入的點數 (貼紙數量):"); 
+            if(amt && parseInt(amt) > 0) {
+                let pt = parseInt(amt); 
+                selStus.forEach(n => { 
+                    data.students[n].coins += pt; 
+                    data.students[n].exp += pt; 
+                    logHist(n, `存入貼紙 (+${pt})`); 
+                });
+                if(userRole === 'helper') { selStus.clear(); renderUI(); } else { toggleBatch(); }
+                saveData(); sfx('coin'); alert(`✅ 已成功為選取的學生存入 ${pt} 點！`);
+            }
+        }
+        
+        function openClassReward() { document.getElementById('crPoints').innerText=data.classPoints; const l=document.getElementById('crList'); l.innerHTML=''; data.classRewards.forEach((r,idx)=>{ let del = userRole==='teacher' ? `<span style="color:red;cursor:pointer;margin-left:10px;" onclick="delCR(${idx})">✖</span>` : ''; const can = data.classPoints>=50; l.innerHTML += `<div class="list-item"><div class="item-info"><div class="item-title">${r.name}</div><div class="item-desc">${r.desc}</div></div><div style="display:flex;align-items:center;"><button class="tool-btn ${can?'btn-green':'btn-gray'}" style="font-size:12px;padding:4px 8px;" onclick="${can?`redeemClassItem('${r.name}')`:''}" ${can?'':'disabled'}>兌換 (-50)</button>${del}</div></div>`; }); const bl=document.getElementById('classBagList'); bl.innerHTML=''; if(!data.classInventory.length) bl.innerHTML='<div style="text-align:center;color:#aaa;padding:10px;">無</div>'; else data.classInventory.forEach((i,idx)=>{ let ub=userRole==='teacher'?`<button class="tool-btn btn-blue" style="font-size:12px;padding:2px 6px;" onclick="useClassItem(${idx},'${i.name}')">使用</button>`:''; bl.innerHTML+=`<div style="display:flex;justify-content:space-between;padding:5px;border-bottom:1px dashed #eee;"><span>📦 ${i.name}</span>${ub}</div>`; }); const hl=document.getElementById('classHistList'); hl.innerHTML=''; data.classHistory.slice(0,5).forEach(h=>{hl.innerHTML+=`<div style="border-bottom:1px solid #eee;padding:3px 0;">${h.t} - ${h.msg}</div>`;}); openModal('classRewardModal'); }
+        function redeemClassItem(n) { if(confirm(`兌換 ${n}?`)) { logClassHist(`兌換:${n}`,-50); data.classInventory.push({name:n,date:new Date().toLocaleDateString()}); saveData(); sfx('win'); openClassReward(); renderUI(); alert("已放入班級背包"); } }
+        function useClassItem(i,n) { if(confirm(`使用 ${n}?`)) { data.classInventory.splice(i,1); logClassHist(`使用:${n}`,0); saveData(); openClassReward(); alert("啟用！"); } }
+        function logClassHist(m,p) { if(p!==0)data.classPoints+=p; const t=new Date().toLocaleString('zh-TW',{month:'numeric',day:'numeric'}); data.classHistory.unshift({t:t,msg:`${m} (${p>0?'+':''}${p})`}); if(data.classHistory.length>20)data.classHistory.pop(); }
+        function addCR() { const n=document.getElementById('newCRName').value; if(n){data.classRewards.push({name:n,desc:""});saveData();openClassReward();document.getElementById('newCRName').value="";} }
+        function delCR(i) { if(confirm("刪?")){data.classRewards.splice(i,1);saveData();openClassReward();} }
+        function doDiv(a) { if(confirm(`分紅 +${a}?`)) { Object.keys(data.students).forEach(n=>{ data.students[n].coins+=a; data.students[n].exp+=a; logHist(n, `分紅+${a}`); }); saveData(); closeModal('divModal'); } }
+        
+        function saveList() { const l=document.getElementById('mgrInput').value.split('\n').map(n=>n.trim()).filter(n=>n); if(!l.length)return; let nS={}; l.forEach(n=>{ nS[n]=data.students[n]||{coins:0,exp:0,inventory:[],history:[],absent:false,badges:[]}; }); data.students=nS; saveData(); alert("Saved"); }
+        function resetAll() { if(confirm("確定全部歸零? (所有數據將清空)")) { localStorage.removeItem(DB_KEY); location.reload(); } }
+        function dailyReset() { if(confirm("重置每日狀態?")) { data.secret=null; data.boss=null; revealed={secret:false,boss:false}; for(let n in data.students)data.students[n].absent=false; saveData(); sfx('win'); alert("早安"); } }
+        function dlData() { const a=document.createElement('a'); a.href="data:json,"+JSON.stringify(data); a.download="backup.json"; a.click(); }
+        function toggleSound() { soundOn=!soundOn; document.getElementById('btnSound').innerText=soundOn?'🔊':'🔇'; }
+        
+        function drawNew(t) { let c=Object.keys(data.students).filter(n=>!data.students[n].absent); if(t==='secret'&&data.boss)c=c.filter(n=>n!==data.boss); if(!c.length)return alert("無人"); data[t]=c[Math.floor(Math.random()*c.length)]; revealed[t]=false; saveData(); sfx('coin'); alert("已抽"); }
+        function toggleReveal(t) { if(!data[t])return alert("先抽"); revealed[t]=!revealed[t]; updMyst(t); sfx('coin'); }
+        function updMyst(t) { const e=document.getElementById(t==='secret'?'dispSecret':'dispBoss'); e.innerText=(!data[t])?"???":(revealed[t]?data[t]:"???"); e.style.color=revealed[t]?"#e74c3c":"#2c3e50"; }
+        function applyWin(t) { if(!data[t])return alert("還沒抽"); const n=data[t], p=(t==='secret'?2:10); data.students[n].coins+=p; data.students[n].exp+=p; logHist(n,`${t==='secret'?'秘密客':'守護者'} +${p}`); logClassHist(`${t==='secret'?'秘密客':'守護者'}`, (t==='secret'?1:5)); sfx('win'); saveData(); alert("獎勵發放！"); }
+        
+        function spinWheel() { const c=Object.keys(data.students).filter(n=>!data.students[n].absent); openModal('wheelModal'); document.getElementById('wheelSetup').style.display='block'; document.getElementById('wheelRunning').style.display='none'; document.getElementById('wheelActions').style.display='none'; document.getElementById('wheelCount').max = c.length; document.getElementById('wheelCount').value = 1; }
+        function runWheel() { const count = parseInt(document.getElementById('wheelCount').value) || 1; const c=Object.keys(data.students).filter(n=>!data.students[n].absent); let shuffled = c.sort(() => 0.5 - Math.random()); wheelWinners = shuffled.slice(0, count); document.getElementById('wheelSetup').style.display='none'; document.getElementById('wheelRunning').style.display='block'; document.getElementById('wheelIcon').style.animation='shake 0.2s infinite'; document.getElementById('wheelRes').innerText='...'; setTimeout(()=>{ document.getElementById('wheelIcon').style.animation='none'; document.getElementById('wheelRes').innerText = wheelWinners.join('、'); document.getElementById('wheelRunning').style.display='none'; document.getElementById('wheelActions').style.display='flex'; document.getElementById('finalWinners').innerText = "🎉 中獎名單：" + wheelWinners.join('、'); sfx('win'); }, 1500); }
+        function confirmWheelWin() { wheelWinners.forEach(winner => applyTask("轉盤獎勵", 2, winner)); closeModal('wheelModal'); }
+        function switchLvTab(zone) { document.querySelectorAll('.level-tab').forEach(t=>t.classList.remove('active')); event.target.classList.add('active'); fillLevelTable(zone); }
+        function fillLevelTable(zone='new') { const b=document.getElementById('lvTableBody'); b.innerHTML=''; LEVEL_TABLE.forEach(r=>{ let show = false; if(zone==='new' && r.lv < 10) show=true; if(zone==='war' && r.lv >= 10 && r.lv < 20) show=true; if(zone==='adv' && r.lv >= 20 && r.lv < 25) show=true; if(zone==='leg' && r.lv >= 25) show=true; if(show) { const d=r.disc<1?`<span style="color:red;font-weight:bold;">${Math.round(r.disc*10)}折</span>`:'-'; b.innerHTML+=`<tr><td>Lv.${r.lv}</td><td>${r.title}</td><td>${d}</td><td>${r.priv}</td></tr>`; } }); }
+        
+        window.onclick = e => { if(e.target.className==='modal' && !e.target.classList.contains('high-z')) e.target.style.display='none'; }
+    </script>
+</body>
+</html>
