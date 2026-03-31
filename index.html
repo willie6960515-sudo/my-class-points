@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>班級榮譽系統 v59.1 (雙榜單版)</title>
+    <title>班級榮譽系統 v60.0 (終極完美版)</title>
     
-    <!-- Firebase SDK (相容模式，最穩定) -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -101,7 +100,6 @@
         .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: auto; }
         .btn-act { border: none; border-radius: 4px; padding: 6px; font-size: 12px; font-weight: bold; cursor: pointer; color: #333; }
         .btn-plus { background: #d4efdf; color: #27ae60; } 
-        /* 魔法召喚按鈕 */
         .btn-gacha { background: #e8daef; color: #8e44ad; }
         .btn-bag { background: #f2f2f2; color: #555; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 6px; border-radius: 4px; border:none; cursor: pointer; margin-top:5px; font-size: 12px; width: 100%; }
         .btn-bag.has-item { background: #fadbd8; color: #c0392b; font-weight: bold; }
@@ -236,8 +234,8 @@
         <div class="login-box">
             <div id="loading-overlay">資料同步中...</div>
             <div style="font-size: 50px; margin-bottom: 10px;">🛡️</div>
-            <h2 style="margin:0;">班級系統 v59.1</h2>
-            <p style="color:#aaa; font-weight:bold; color:#e67e22;">雙榜單版</p>
+            <h2 style="margin:0;">班級系統 v60.0</h2>
+            <p style="color:#aaa; font-weight:bold; color:#e67e22;">雙榜單＋終極備份升級版</p>
             
             <div class="cloud-status-bar">
                 <div id="userInfoDisplay" style="display:none; width:100%;">
@@ -246,7 +244,7 @@
                 </div>
                 <button id="btnLoginGoogle" class="btn-google" onclick="doLogin()">
                     <svg class="w-4 h-4" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                    Google 登入同步 (救援至雲端)
+                    Google 登入同步 (雲端存檔)
                 </button>
             </div>
 
@@ -325,7 +323,6 @@
         <button class="tool-btn btn-red admin-only" onclick="toggleBatch()">取消</button>
     </div>
 
-    <!-- Modals -->
     <div id="taskModal" class="modal"><div class="modal-content"><span class="close-icon" onclick="closeModal('taskModal')">&times;</span><h3 id="taskModalTitle">📜 派發任務</h3><p id="taskTarget" style="font-size:13px; color:#e67e22; font-weight:bold; margin-bottom:10px;"></p><div class="task-grid" id="taskList"></div></div></div>
     
     <div id="detailModal" class="modal"><div class="modal-content"><span class="close-icon" onclick="closeModal('detailModal')">&times;</span>
@@ -354,7 +351,6 @@
         </div>
     </div></div>
 
-    <!-- 排行榜 Modal -->
     <div id="familyRankModal" class="modal">
         <div class="modal-content">
             <span class="close-icon" onclick="closeModal('familyRankModal')">&times;</span>
@@ -376,7 +372,6 @@
     
     <div id="managerModal" class="modal"><div class="modal-content"><span class="close-icon" onclick="closeModal('managerModal')">&times;</span><h3>⚙️ 系統管理</h3><div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px;"><button class="tool-btn btn-purple" onclick="openCardEditor()">🛠 編輯卡池與圖片</button><button class="tool-btn btn-orange" onclick="openModal('gachaEditModal')">🎁 稀有度機率</button><button class="tool-btn btn-blue" onclick="openModal('levelTableModal')">📊 等級福利表</button><button class="tool-btn btn-dark" onclick="dlData()">💾 下載備份</button><button class="tool-btn btn-dark" onclick="document.getElementById('fileInput').click()">📂 匯入備份</button></div><div style="background:#fff8e1; padding:15px; border-radius:10px; margin-bottom:20px;"><div style="font-weight:bold; color:#d35400; margin-bottom:10px;">🔑 修改密碼</div><div style="display:flex; gap:10px;"><button class="tool-btn btn-orange" style="flex:1" onclick="changePw('teacher')">改老師密碼</button><button class="tool-btn btn-gray" style="flex:1" onclick="changePw('helper')">改幫手密碼</button></div></div><p style="font-weight:bold; margin-bottom:5px;">👥 家族分組設定</p><textarea id="groupEditor" style="height:80px;"></textarea><button class="tool-btn btn-green" onclick="saveGroups()" style="width:100%; margin-bottom:20px;">儲存分組</button><div style="background:#e8f8f5; padding:15px; border-radius:10px; margin-bottom:20px;"><button class="tool-btn btn-green" style="width:100%" onclick="dailyReset()">🌞 早安！開始新的一天 (重置抽籤)</button></div><p style="font-weight:bold; margin-bottom:5px;">📋 學生名單 (請小心修改)</p><textarea id="mgrInput"></textarea><div style="display:flex; justify-content:space-between; margin-top:10px;"><button class="tool-btn btn-red" onclick="resetAll()">⚠ 全部歸零重置</button><button class="tool-btn btn-green" onclick="saveList()">💾 儲存名單</button></div>
     
-    <!-- 新增的強制重整按鈕 -->
     <div style="margin-top:20px; padding-top:20px; border-top: 1px dashed #ccc; text-align: center;">
         <p style="font-size:12px; color:#666; margin-bottom: 5px;">如果更新後畫面沒變，請點擊下方按鈕強制清除瀏覽器記憶：</p>
         <button class="tool-btn btn-red" style="width: 100%;" onclick="hardReload()">🔄 強制重整 (清除快取)</button>
@@ -408,7 +403,6 @@
 
     <div id="levelTableModal" class="modal high-z"><div class="modal-content"><span class="close-icon" onclick="closeModal('levelTableModal')">&times;</span><h3>📊 等級福利對照表</h3><div class="level-tabs"><div class="level-tab active" onclick="switchLvTab('new')">👶 新手(1-9)</div><div class="level-tab" onclick="switchLvTab('war')">⚔️ 勇士(10-19)</div><div class="level-tab" onclick="switchLvTab('adv')">🛡️ 冒險(20-24)</div><div class="level-tab" onclick="switchLvTab('leg')">👑 傳奇(25+)</div></div><div style="max-height:400px; overflow-y:auto; margin-top:10px;"><table class="lv-table"><thead><tr><th>等級</th><th>稱號</th><th>商店折扣</th><th>特權</th></tr></thead><tbody id="lvTableBody"></tbody></table></div></div></div>
     
-    <!-- 卡牌編輯器 -->
     <div id="cardEditModal" class="modal high-z"><div class="modal-content"><span class="close-icon" onclick="closeModal('cardEditModal')">&times;</span><h3>🛠 編輯魔法卡池</h3>
         <p style="font-size:12px; color:#666; margin-bottom:10px;">您可以貼上自行設計的卡牌圖片網址 (建議尺寸至少 540x900 像素，以確保放大後清晰)。若無圖片，系統會自動使用內建精美樣式。</p>
         <div style="background:#f0f0f0; padding:10px; margin-bottom:10px; border-radius:5px; display:flex; gap:5px; flex-wrap:wrap; align-items: center;">
@@ -431,7 +425,6 @@
         <button class="tool-btn btn-green" style="margin-top:10px; width:100%;" onclick="saveGe()">儲存</button>
     </div></div>
 
-    <!-- ✨ 魔法召喚祭壇 (全螢幕特效) ✨ -->
     <div id="gachaOverlay">
         <span class="close-icon" style="color:white; top:30px; right:30px;" onclick="closeGacha()">&times;</span>
         <div class="rpg-altar" id="altarMain">
@@ -498,7 +491,7 @@
             console.error("Firebase Init Error:", e);
         }
 
-        const DB_KEY = "HGS_V59_RESCUE"; 
+        const DB_KEY = "HGS_V60_RESCUE"; 
         
         const DEFAULT_STUDENTS = [
             "01號吳畇臻","02號曾姿涵","03號簡瑀希","04號蕭沂楨","05號吳芊葦","06號呂宥薰",
@@ -596,66 +589,82 @@
         let loginTargetRole = ''; 
         const ac = new (window.AudioContext||window.webkitAudioContext)();
 
-        // 核心解法：精簡重構 0327.json 救援資料
-        function runRescueData() {
-            // 利用緊湊的陣列格式重建分數與背包，確保完全不會出現截斷或語法錯誤
-            const scores = {
-                "01號吳畇臻":{c:134,e:154,i:[]},"02號曾姿涵":{c:156,e:156,i:[]},"03號簡瑀希":{c:166,e:186,i:[4]},"04號蕭沂楨":{c:163,e:203,i:[12,6]},
-                "05號吳芊葦":{c:177,e:177,i:[]},"06號呂宥薰":{c:234,e:234,i:[]},"07號鄭芯妮":{c:159,e:179,i:[21]},"08號李芊樺":{c:72,e:152,i:[8,7,13,2]},
-                "09號潘妍萱":{c:156,e:156,i:[]},"10號蔡媞如":{c:133,e:173,i:[1,12]},"11號賴薇珊":{c:153,e:153,i:[]},"12號吉䕳亞":{c:20,e:160,i:[13,14,3,6,3,8]},
-                "13號王佑妮":{c:154,e:154,i:[]},"14號劉爰均":{c:118,e:118,a:true,i:[]},"16號李家成":{c:28,e:228,i:[3,5,12,5,13,16,12]},"17號林思諺":{c:18,e:98,i:[4,14,11,6]},
-                "18號陳柏瑋":{c:88,e:128,b:["💧"],i:[]},"19號盧芃宇":{c:53,e:133,i:[4,12]},"20號林梓樑":{c:162,e:162,i:[]},"21號吳睿承":{c:143,e:203,i:[19]},
-                "22號陳炘戊":{c:16,e:156,i:[4,8,8,4,8,16]},"23號朱品翰":{c:247,e:267,a:true,i:[]},"24號龔允丞":{c:14,e:174,b:["🟡"],i:[3,6,4,16,13]},"25號莊孟蒝":{c:18,e:178,i:[5,3,9,12,12]},
-                "26號陳泳璿":{c:164,e:184,i:[15]},"27號張敬浩":{c:152,e:192,i:[13,8]},"28號謝祐宸":{c:140,e:160,i:[32]},"29號盧岍霖":{c:98,e:98,i:[]}
-            };
-            
-            data.students = {};
-            for(let n in scores) {
-                let d = scores[n];
-                let inv = [];
-                d.i.forEach(id => {
-                    let card = CARDS_DEFAULT.find(c => c.id === id);
-                    if(card) inv.push({id: card.id, name: card.name, rarity: card.rarity, desc: card.desc, time: "2026/3/27", isCard: true});
-                });
-                // 額外救援遺失的五行徽章
-                if(n === "21號吳睿承") inv.push({name: "💧 水行徽章", desc: "盲盒開出", time: "2026/3/27"});
-                if(n === "19號盧芃宇") inv.push({name: "💧 水行徽章", desc: "盲盒開出", time: "2026/3/20"});
-
-                data.students[n] = {
-                    coins: d.c, exp: d.e, absent: d.a || false, badges: d.b || [], history: [], inventory: inv
-                };
-            }
-            data.classPoints = 43;
-            data.boss = "13號王佑妮";
-            data.secret = "27號張敬浩";
-            data.groups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
-            data.cards = JSON.parse(JSON.stringify(CARDS_DEFAULT));
-            data.classRewards = JSON.parse(JSON.stringify(CLASS_REWARDS_DEFAULT));
-            data.gachaRates = JSON.parse(JSON.stringify(RATES_DEFAULT));
-        }
-
         window.onload = () => {
-            // 第一步：如果是全新開啟這個 v58，我們強制灌入 3/27 的神聖救援檔
-            if(!localStorage.getItem(DB_KEY)) {
-                runRescueData();
-                saveData(); // 儲存並準備顯示
-                localStorage.setItem(DB_KEY, "RESCUED_SUCCESS");
-                console.log("資料已經完美還原至 3/27 狀態！");
-            } else {
-                // 如果已經還原過，就正常讀取
+            if(localStorage.getItem(DB_KEY)) {
                 try {
-                    const local = JSON.parse(localStorage.getItem("HGS_V58_DATA"));
+                    const local = JSON.parse(localStorage.getItem(DB_KEY));
                     if(local) data = local;
                 } catch(e) { }
+            } else {
+                initDefaultData();
             }
             
-            // 例行檢查
-            if(!data.cards || !data.cards.length) data.cards = JSON.parse(JSON.stringify(CARDS_DEFAULT));
+            // 確保永遠擁有最新的卡池與機率設定
+            data.cards = JSON.parse(JSON.stringify(CARDS_DEFAULT));
             if(!data.gachaRates || !data.gachaRates.length) data.gachaRates = JSON.parse(JSON.stringify(RATES_DEFAULT));
             if(!data.classRewards || !data.classRewards.length) data.classRewards = JSON.parse(JSON.stringify(CLASS_REWARDS_DEFAULT));
             
             renderUI(); fillLevelTable(); document.getElementById('pinInput').focus();
         };
+
+        // --- 強制重整 (清除快取) ---
+        function hardReload() {
+            window.location.href = window.location.pathname + '?t=' + new Date().getTime();
+        }
+
+        // --- 匯入備份並強制升級卡牌 (核心修復) ---
+        function importData(e) {
+            const r = new FileReader();
+            r.onload = async (x) => {
+                try {
+                    let importedData = JSON.parse(x.target.result);
+                    
+                    data.students = importedData.students || {};
+                    data.groups = importedData.groups || DEFAULT_GROUPS;
+                    data.classPoints = importedData.classPoints || 0;
+                    data.classHistory = importedData.classHistory || [];
+                    data.classInventory = importedData.classInventory || [];
+                    data.secret = importedData.secret || null;
+                    data.boss = importedData.boss || null;
+                    
+                    data.cards = JSON.parse(JSON.stringify(CARDS_DEFAULT));
+                    data.gachaRates = JSON.parse(JSON.stringify(RATES_DEFAULT));
+                    data.classRewards = JSON.parse(JSON.stringify(CLASS_REWARDS_DEFAULT));
+                    if (data.shopItems) delete data.shopItems;
+
+                    Object.keys(data.students).forEach(name => {
+                        let stu = data.students[name];
+                        if (stu.inventory && stu.inventory.length > 0) {
+                            stu.inventory.forEach(item => {
+                                let cleanName = item.name;
+                                if (cleanName && cleanName.includes('[中獎]')) cleanName = cleanName.replace('[中獎]', '');
+                                
+                                let matchedCard = data.cards.find(c => c.name === cleanName);
+                                if (matchedCard) {
+                                    item.id = matchedCard.id;
+                                    item.name = matchedCard.name;
+                                    item.rarity = matchedCard.rarity;
+                                    item.desc = matchedCard.desc;
+                                    item.icon = matchedCard.icon;
+                                    item.isCard = true;
+                                }
+                            });
+                        }
+                    });
+                    
+                    if (isCloud && user) {
+                        await db.collection('users').doc(user.uid).collection('honor_system').doc('main_data').set(data);
+                    }
+                    localStorage.setItem(DB_KEY, JSON.stringify(data));
+                    
+                    alert("✅ 備份匯入成功！已完全覆寫舊資料並升級為最新圖卡！");
+                    location.reload(true);
+                } catch (err) {
+                    alert("匯入失敗，檔案格式不正確：" + err.message);
+                }
+            };
+            r.readAsText(e.files[0]);
+        }
 
         // --- CLOUD ---
         function doLogin() {
@@ -675,8 +684,6 @@
             unsubscribeSync = docRef.onSnapshot((docSnap) => {
                 if(docSnap.exists) {
                     let cloudData = docSnap.data();
-                    
-                    // 防呆機制：如果雲端資料全空（0分），則直接無視雲端，強制把我們本地還原好的 3/27 資料蓋上去
                     let totalCoins = 0;
                     if(cloudData.students) {
                         Object.values(cloudData.students).forEach(s => totalCoins += (s.coins || 0));
@@ -684,20 +691,16 @@
                     
                     if (totalCoins === 0) {
                         console.log("偵測到雲端資料異常歸零，已自動啟動反制機制，將本地備份蓋回雲端。");
-                        saveData(); // 強制把當前的本地 data 覆寫上雲端
+                        saveData(); 
                     } else {
                         data = cloudData;
-                        // 確保圖片是最高畫質
-                        data.cards.forEach(c => {
-                            const def = CARDS_DEFAULT.find(d => d.id === c.id);
-                            if (def) c.imageUrl = def.imageUrl;
-                        });
+                        data.cards = JSON.parse(JSON.stringify(CARDS_DEFAULT));
                         if(!data.gachaRates || !data.gachaRates.length) data.gachaRates = JSON.parse(JSON.stringify(RATES_DEFAULT));
                         if(!data.classRewards || !data.classRewards.length) data.classRewards = JSON.parse(JSON.stringify(CLASS_REWARDS_DEFAULT));
                         renderUI(); 
                     }
                 } else { 
-                    saveData(); // 雲端全空，上傳本地
+                    saveData(); 
                 }
                 document.getElementById('loading-overlay').style.display = 'none';
             }, (error) => {
@@ -707,7 +710,12 @@
         }
 
         function initDefaultData() {
-            runRescueData(); // 若遇到極端情況，也強制回到 3/27
+            data.students = {}; 
+            DEFAULT_STUDENTS.forEach(n => data.students[n] = { coins:0, exp:0, inventory:[], history:[], absent:false, badges:[] });
+            data.groups = JSON.parse(JSON.stringify(DEFAULT_GROUPS));
+            data.cards = JSON.parse(JSON.stringify(CARDS_DEFAULT));
+            data.classRewards = JSON.parse(JSON.stringify(CLASS_REWARDS_DEFAULT));
+            data.gachaRates = JSON.parse(JSON.stringify(RATES_DEFAULT));
             saveData();
         }
         
@@ -716,7 +724,7 @@
                 db.collection('users').doc(user.uid).collection('honor_system').doc('main_data').set(data)
                 .catch(e => console.error("Cloud Save Error", e));
             } else {
-                localStorage.setItem("HGS_V58_DATA", JSON.stringify(data)); 
+                localStorage.setItem(DB_KEY, JSON.stringify(data)); 
             }
             renderUI(); 
         }
@@ -1048,8 +1056,41 @@
         function closeModal(id) { document.getElementById(id).style.display='none'; }
         function renderAttend() { const g=document.getElementById('attendGrid'); g.innerHTML=''; const sortedNames = Object.keys(data.students).sort((a,b)=>parseInt(a)-parseInt(b)); sortedNames.forEach(n=>{ const s=data.students[n]; const d=document.createElement('div'); d.style=`border:1px solid #ddd;padding:5px;text-align:center;border-radius:4px;cursor:pointer;background:${s.absent?'#fadbd8':'#d4efdf'};color:${s.absent?'#c0392b':'#1e8449'};`; d.innerText=n+(s.absent?'(假)':''); d.onclick=()=>{s.absent=!s.absent;saveData();renderAttend();renderUI();}; g.appendChild(d); }); }
         
-        function openFamilyRank(){ const fl=document.getElementById('familyRankList'); fl.innerHTML=''; let fr=[]; Object.keys(data.groups).forEach(g=>{ let s=0; data.groups[g].forEach(n=>{ if(data.students[n]) s+=data.students[n].exp; }); fr.push({n:g,s:s}); }); fr.sort((a,b)=>b.s-a.s); const fmax=fr[0]?.s||1; fr.forEach((x,i)=>{ fl.innerHTML+=`<div class="rank-bar-container"><div class="rank-bar-label"><span>${i+1}. ${x.n}</span><span>${x.s} EXP</span></div><div class="rank-bar-track"><div class="rank-bar-fill" style="width:${(x.s/fmax)*100}%"></div></div></div>`; }); const il=document.getElementById('individualRankList'); il.innerHTML=''; let ir=[]; Object.keys(data.students).forEach(n=>{ ir.push({n:n, s:data.students[n].exp}); }); ir.sort((a,b)=>b.s-a.s); const top10 = ir.slice(0, 10); const imax=top10[0]?.s||1; top10.forEach((x,i)=>{ let medal = i===0 ? '🥇' : (i===1 ? '🥈' : (i===2 ? '🥉' : `${i+1}.`)); il.innerHTML+=`<div class="rank-bar-container"><div class="rank-bar-label"><span>${medal} ${x.n}</span><span>${x.s} EXP</span></div><div class="rank-bar-track"><div class="rank-bar-fill" style="width:${(x.s/imax)*100}%; background: var(--accent);"></div></div></div>`; }); swRankTab('family'); openModal('familyRankModal'); }
-        function swRankTab(t) { const m=document.getElementById('familyRankModal'); m.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); m.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active')); if(t==='family'){ m.querySelectorAll('.tab')[0].classList.add('active'); document.getElementById('t-familyRank').classList.add('active'); } else if(t==='individual'){ m.querySelectorAll('.tab')[1].classList.add('active'); document.getElementById('t-individualRank').classList.add('active'); } }
+        // 🏆 雙榜單系統核心邏輯
+        function openFamilyRank(){ 
+            // 家族榜
+            const fl=document.getElementById('familyRankList'); fl.innerHTML=''; 
+            let fr=[]; Object.keys(data.groups).forEach(g=>{ let s=0; data.groups[g].forEach(n=>{ if(data.students[n]) s+=data.students[n].exp; }); fr.push({n:g,s:s}); }); 
+            fr.sort((a,b)=>b.s-a.s); const fmax=fr[0]?.s||1; 
+            fr.forEach((x,i)=>{ fl.innerHTML+=`<div class="rank-bar-container"><div class="rank-bar-label"><span>${i+1}. ${x.n}</span><span>${x.s} EXP</span></div><div class="rank-bar-track"><div class="rank-bar-fill" style="width:${(x.s/fmax)*100}%"></div></div></div>`; }); 
+            
+            // 個人榜 (前10名，嚴格依據 exp)
+            const il=document.getElementById('individualRankList'); il.innerHTML=''; 
+            let ir=[]; Object.keys(data.students).forEach(n=>{ ir.push({n:n, s:data.students[n].exp}); }); 
+            ir.sort((a,b)=>b.s-a.s); 
+            const top10 = ir.slice(0, 10); const imax=top10[0]?.s||1; 
+            top10.forEach((x,i)=>{ 
+                let medal = i===0 ? '🥇' : (i===1 ? '🥈' : (i===2 ? '🥉' : `${i+1}.`)); 
+                il.innerHTML+=`<div class="rank-bar-container"><div class="rank-bar-label"><span>${medal} ${x.n}</span><span>${x.s} EXP</span></div><div class="rank-bar-track"><div class="rank-bar-fill" style="width:${(x.s/imax)*100}%; background: var(--accent);"></div></div></div>`; 
+            }); 
+            
+            swRankTab('family'); 
+            openModal('familyRankModal'); 
+        }
+        
+        function swRankTab(t) { 
+            const m=document.getElementById('familyRankModal'); 
+            m.querySelectorAll('.rank-tab').forEach(x=>x.classList.remove('active')); 
+            m.querySelectorAll('.rank-tab-content').forEach(x=>x.classList.remove('active')); 
+            if(t==='family'){ 
+                m.querySelectorAll('.rank-tab')[0].classList.add('active'); 
+                document.getElementById('t-familyRank').classList.add('active'); 
+            } else if(t==='individual'){ 
+                m.querySelectorAll('.rank-tab')[1].classList.add('active'); 
+                document.getElementById('t-individualRank').classList.add('active'); 
+            } 
+        }
+
         function saveGroups(){ const t=document.getElementById('groupEditor').value; const lines=t.split('\n'); let ng={}; lines.forEach(l=>{ const p=l.split(':'); if(p.length===2) ng[p[0].trim()]=p[1].split(',').map(x=>x.trim()).filter(x=>x); }); if(Object.keys(ng).length){ data.groups=ng; saveData(); alert("Saved"); } }
         function toggleFamilyMenu(){ const m=document.getElementById('familyMenu'); if(m.style.display==='grid'){m.style.display='none';}else{ m.innerHTML=''; Object.keys(data.groups).forEach(g=>{ const b=document.createElement('button'); b.className='tool-btn btn-purple'; b.innerText=g; b.onclick=()=>{ selectGroup(g); }; m.appendChild(b); }); m.style.display='grid'; } }
         function selectGroup(g){ const mems=data.groups[g]; if(mems){ mems.forEach(n=>{ if(data.students[n]&&!data.students[n].absent) selStus.add(n); }); document.getElementById('batchCount').innerText=`已選 ${selStus.size}`; renderUI(); sfx('coin'); } }
